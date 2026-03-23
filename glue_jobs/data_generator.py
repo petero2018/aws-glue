@@ -1,0 +1,221 @@
+"""
+Data generator functions for creating sample records.
+Generates organizations, products, customers, orders, and order items.
+"""
+
+import random
+from datetime import datetime, timedelta
+from sample_data import (
+    ORGANIZATIONS, PRODUCT_CATEGORIES, PRODUCT_NAMES,
+    FIRST_NAMES, LAST_NAMES, CITIES, CUSTOMER_SEGMENTS,
+    ORDER_STATUSES, COUNTRIES
+)
+
+
+class DataGenerator:
+    """Generates sample data with relationships."""
+
+    def __init__(self, seed=42):
+        """Initialize generator with random seed for reproducibility."""
+        random.seed(seed)
+
+    def generate_organizations(self):
+        """
+        Generate organization records.
+        
+        Returns:
+            list: List of organization dictionaries
+        """
+        return ORGANIZATIONS.copy()
+
+    def generate_products(self, organizations):
+        """
+        Generate product records linked to organizations.
+        
+        Args:
+            organizations (list): List of organization dictionaries
+            
+        Returns:
+            list: List of product dictionaries
+        """
+        products = []
+        product_id = 1
+
+        for org in organizations:
+            org_id = org["org_id"]
+            # Each org has 2-4 product categories
+            num_categories = random.randint(2, 4)
+            selected_categories = random.sample(PRODUCT_CATEGORIES, k=num_categories)
+
+            for category in selected_categories:
+                # Each category has 1-3 products
+                num_products = random.randint(1, 3)
+                selected_products = random.sample(
+                    PRODUCT_NAMES[category],
+                    k=min(num_products, len(PRODUCT_NAMES[category]))
+                )
+
+                for product_name in selected_products:
+                    products.append({
+                        "product_id": product_id,
+                        "org_id": org_id,
+                        "product_name": product_name,
+                        "category": category,
+                        "price": round(random.uniform(10, 500), 2),
+                        "stock_quantity": random.randint(10, 1000),
+                        "created_date": (
+                            datetime.now() - timedelta(days=random.randint(1, 365))
+                        ).date()
+                    })
+                    product_id += 1
+
+        return products
+
+    def generate_customers(self, num_customers=100):
+        """
+        Generate customer records.
+        
+        Args:
+            num_customers (int): Number of customers to generate
+            
+        Returns:
+            list: List of customer dictionaries
+        """
+        customers = []
+
+        for cust_id in range(1, num_customers + 1):
+            customers.append({
+                "customer_id": cust_id,
+                "first_name": random.choice(FIRST_NAMES),
+                "last_name": random.choice(LAST_NAMES),
+                "email": f"customer_{cust_id}@example.com",
+                "phone": f"+1{random.randint(2000000000, 9999999999)}",
+                "city": random.choice(CITIES),
+                "country": random.choice(COUNTRIES),
+                "signup_date": (
+                    datetime.now() - timedelta(days=random.randint(1, 730))
+                ).date(),
+                "customer_segment": random.choice(CUSTOMER_SEGMENTS),
+            })
+
+        return customers
+
+    def generate_orders(self, customers, organizations, products, num_orders=500):
+        """
+        Generate order records linked to customers and organizations.
+        
+        Args:
+            customers (list): List of customer dictionaries
+            organizations (list): List of organization dictionaries
+            products (list): List of product dictionaries
+            num_orders (int): Number of orders to generate
+            
+        Returns:
+            list: List of order dictionaries
+        """
+        orders = []
+        num_customers = len(customers)
+
+        for order_id in range(1, num_orders + 1):
+            customer_id = random.randint(1, num_customers)
+            # Pick a random number of items (1-5 per order)
+            num_items = random.randint(1, 5)
+            
+            # Select random products
+            selected_products = random.sample(
+                products,
+                k=min(num_items, len(products))
+            )
+            
+            # Calculate order total from selected products
+            order_total = sum(p["price"] for p in selected_products)
+
+            orders.append({
+                "order_id": order_id,
+                "customer_id": customer_id,
+                "org_id": selected_products[0]["org_id"],  # All items from same org
+                "order_date": (
+                    datetime.now() - timedelta(days=random.randint(1, 365))
+                ).date(),
+                "total_amount": round(order_total, 2),
+                "num_items": num_items,
+                "order_status": random.choice(ORDER_STATUSES),
+            })
+
+        return orders
+
+    def generate_order_items(self, orders, products):
+        """
+        Generate order item records (line items for orders).
+        
+        Args:
+            orders (list): List of order dictionaries
+            products (list): List of product dictionaries
+            
+        Returns:
+            list: List of order item dictionaries
+        """
+        order_items = []
+        order_item_id = 1
+        
+        # Create map of products by org_id for faster lookup
+        products_by_org = {}
+        for product in products:
+            org_id = product["org_id"]
+            if org_id not in products_by_org:
+                products_by_org[org_id] = []
+            products_by_org[org_id].append(product)
+
+        for order in orders:
+            num_items = order["num_items"]
+            org_id = order["org_id"]
+            
+            # Get available products for this org
+            available_products = products_by_org.get(org_id, [])
+            if not available_products:
+                continue
+                
+            # Select random products for this order
+            selected_products = random.sample(
+                available_products,
+                k=min(num_items, len(available_products))
+            )
+
+            for product in selected_products:
+                quantity = random.randint(1, 5)
+                order_items.append({
+                    "order_item_id": order_item_id,
+                    "order_id": order["order_id"],
+                    "product_id": product["product_id"],
+                    "quantity": quantity,
+                    "unit_price": product["price"],
+                    "subtotal": round(quantity * product["price"], 2),
+                })
+                order_item_id += 1
+
+        return order_items
+
+    @staticmethod
+    def get_data_summary(organizations, products, customers, orders, order_items):
+        """
+        Get summary statistics of generated data.
+        
+        Args:
+            organizations (list): List of organization records
+            products (list): List of product records
+            customers (list): List of customer records
+            orders (list): List of order records
+            order_items (list): List of order item records
+            
+        Returns:
+            dict: Summary statistics
+        """
+        return {
+            "organizations_count": len(organizations),
+            "products_count": len(products),
+            "customers_count": len(customers),
+            "orders_count": len(orders),
+            "order_items_count": len(order_items),
+            "total_order_value": sum(o["total_amount"] for o in orders),
+            "avg_order_value": sum(o["total_amount"] for o in orders) / len(orders) if orders else 0,
+        }
