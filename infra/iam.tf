@@ -71,72 +71,6 @@ resource "aws_iam_role_policy" "glue_cloudwatch_logs" {
   })
 }
 
-# Policy: SNS Publish Access
-resource "aws_iam_role_policy" "glue_sns_publish" {
-  name   = "${local.resource_name_prefix}-sns-publish"
-  role   = aws_iam_role.glue_service_role.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "sns:Publish"
-        ]
-        Resource = [
-          aws_sns_topic.glue_job_notifications.arn
-        ]
-      }
-    ]
-  })
-}
-
-# Policy: SQS Access
-resource "aws_iam_role_policy" "glue_sqs_access" {
-  name   = "${local.resource_name_prefix}-sqs-access"
-  role   = aws_iam_role.glue_service_role.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "sqs:SendMessage",
-          "sqs:ReceiveMessage",
-          "sqs:DeleteMessage",
-          "sqs:GetQueueAttributes"
-        ]
-        Resource = [
-          aws_sqs_queue.glue_job_events.arn,
-          aws_sqs_queue.glue_job_events_dlq.arn
-        ]
-      }
-    ]
-  })
-}
-
-# Policy: Secrets Manager Access
-resource "aws_iam_role_policy" "glue_secrets_manager" {
-  name   = "${local.resource_name_prefix}-secrets-manager"
-  role   = aws_iam_role.glue_service_role.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "secretsmanager:GetSecretValue",
-          "secretsmanager:DescribeSecret"
-        ]
-        Resource = [
-          aws_secretsmanager_secret.glue_db_credentials.arn,
-          aws_secretsmanager_secret.glue_api_keys.arn
-        ]
-      }
-    ]
-  })
-}
-
 # Policy: Glue Catalog Access
 resource "aws_iam_role_policy" "glue_catalog_access" {
   name   = "${local.resource_name_prefix}-catalog-access"
@@ -216,30 +150,6 @@ resource "aws_iam_role_policy" "glue_cloudwatch_metrics" {
             "cloudwatch:namespace" = "AWS/Glue"
           }
         }
-      }
-    ]
-  })
-}
-
-# Policy: CloudWatch Events (EventBridge)
-resource "aws_iam_role_policy" "glue_eventbridge_access" {
-  name   = "${local.resource_name_prefix}-eventbridge-access"
-  role   = aws_iam_role.glue_service_role.id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "events:PutRule",
-          "events:DescribeRule",
-          "events:ListTargetsByRule",
-          "events:PutTargets"
-        ]
-        Resource = [
-          "arn:aws:events:${local.current_region}:${local.current_account_id}:rule/glue-*",
-          "arn:aws:events:${local.current_region}:${local.current_account_id}:rule/${local.resource_name_prefix}-*"
-        ]
       }
     ]
   })

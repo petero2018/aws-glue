@@ -28,15 +28,6 @@ output "glue_catalog_database_name" {
   value       = aws_glue_catalog_database.iceberg_data_lake.name
 }
 
-output "sns_topic_arn" {
-  description = "ARN of the SNS topic for Glue notifications"
-  value       = aws_sns_topic.glue_job_notifications.arn
-}
-
-output "sqs_queue_url" {
-  description = "URL of the SQS queue for Glue events"
-  value       = aws_sqs_queue.glue_job_events.url
-}
 
 output "glue_vpc_id" {
   description = "ID of the Glue VPC"
