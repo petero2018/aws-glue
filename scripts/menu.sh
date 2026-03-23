@@ -26,9 +26,11 @@ show_menu() {
     echo "3) Run Glue Job"
     echo "4) View Glue Job Logs"
     echo "5) List S3 Glue Scripts"
-    echo "6) Exit"
+    echo "6) Clean S3 Bucket"
+    echo "7) Destroy Infrastructure ⚠️"
+    echo "8) Exit"
     echo ""
-    read -p "Select an option (1-6): " choice
+    read -p "Select an option (1-8): " choice
 }
 
 deploy_infrastructure() {
@@ -68,6 +70,16 @@ list_scripts() {
     aws s3 ls s3://glue-engineering-${ACCOUNT_ID}/glue-scripts/ --recursive --profile $PROFILE
 }
 
+clean_bucket() {
+    echo -e "${YELLOW}Cleaning S3 bucket...${NC}"
+    bash "$SCRIPTS_DIR/clean_s3_bucket.sh"
+}
+
+destroy_infrastructure() {
+    echo -e "${YELLOW}Destroying infrastructure...${NC}"
+    bash "$SCRIPTS_DIR/destroy_infrastructure.sh"
+}
+
 main() {
     while true; do
         show_menu
@@ -78,7 +90,9 @@ main() {
             3) run_job ;;
             4) view_logs ;;
             5) list_scripts ;;
-            6) 
+            6) clean_bucket ;;
+            7) destroy_infrastructure ;;
+            8) 
                 echo -e "${GREEN}Goodbye!${NC}"
                 exit 0
                 ;;
