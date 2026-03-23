@@ -7,11 +7,12 @@ set -e  # Exit on error
 
 # Configuration
 PROFILE="king008"
+REGION="eu-west-2"
 EXCLUDE_PATTERN="README.md"
 
 # Get AWS Account ID
 echo "🔍 Fetching AWS Account ID..."
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile ${PROFILE})
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile ${PROFILE} --region ${REGION})
 
 if [ -z "$ACCOUNT_ID" ]; then
     echo "❌ Error: Could not retrieve Account ID. Check your AWS credentials."
@@ -31,10 +32,11 @@ echo ""
 aws s3 cp glue_jobs/ $S3_PATH \
     --recursive \
     --exclude "$EXCLUDE_PATTERN" \
-    --profile $PROFILE
+    --profile $PROFILE \
+    --region $REGION
 
 echo ""
 echo "✅ Upload complete!"
 echo ""
 echo "📋 Files uploaded:"
-aws s3 ls $S3_PATH --recursive --profile $PROFILE | awk '{print "   " $4}'
+aws s3 ls $S3_PATH --recursive --profile $PROFILE --region $REGION | awk '{print "   " $4}'

@@ -41,9 +41,31 @@ job.init(args['JOB_NAME'], args)
 # Configuration
 s3_output_path = args['S3_OUTPUT_PATH']
 
+# Get output format from job parameters (default: parquet for now due to Glue limitations)
+# Pass --OUTPUT_FORMAT parquet or --OUTPUT_FORMAT iceberg when running the job
+output_format = args.get('OUTPUT_FORMAT', 'parquet').lower()
+if output_format not in ['parquet', 'iceberg']:
+    output_format = 'parquet'  # Default to Parquet (more reliable)
+
+database_name = "iceberg_development"  # Must match your Glue catalog database
+
+# Configure Iceberg if requested
+if output_format == 'iceberg':
+    try:
+        # Enable Iceberg in Spark session
+        spark.sql("CREATE DATABASE IF NOT EXISTS iceberg_development LOCATION 's3://{}/warehouse/'".format(
+            s3_output_path.split('/')[2]  # Extract bucket from path
+        ))
+        print("[INFO] Iceberg database configured")
+    except Exception as e:
+        print(f"[WARNING] Could not configure Iceberg: {e}")
+        print("[WARNING] Falling back to Parquet format")
+        output_format = 'parquet'
+
 print("\n" + "=" * 80)
 print(f"Glue Job: {args['JOB_NAME']}")
 print(f"Output Path: {s3_output_path}")
+print(f"Output Format: {output_format.upper()}")
 print("=" * 80 + "\n")
 
 # ==============================================================================
@@ -102,7 +124,7 @@ print("✓ DataFrames created\n")
 
 print("[3/3] Writing data to S3...")
 
-writer = S3DataWriter(s3_output_path)
+writer = S3DataWriter(s3_output_path, format=output_format, database=database_name)
 paths = writer.write_all(org_df, product_df, customer_df, order_df, order_item_df)
 
 print("✓ Data written to S3:")

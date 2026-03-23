@@ -7,7 +7,6 @@ resource "aws_glue_job" "sample_data_generator" {
   worker_type       = "G.2X"
   number_of_workers = 2
   timeout           = 60
-  max_retries       = 1
 
   command {
     name            = "glueetl"
@@ -17,8 +16,11 @@ resource "aws_glue_job" "sample_data_generator" {
 
   default_arguments = {
     "--S3_OUTPUT_PATH"    = "s3://${aws_s3_bucket.glue_data_bucket.id}/raw-data"
+    "--OUTPUT_FORMAT"     = "parquet"
     "--TempDir"           = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-temp"
     "--extra-py-files"    = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/data_generator.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/schemas.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/sample_data.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/s3_io.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/analytics.py"
+    "--dpu-version"       = "4.0"
+    "--spark-event-logs-path" = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-temp/spark-logs"
   }
 
   tags = merge(

@@ -7,6 +7,7 @@ set -e  # Exit on error
 
 # Configuration
 PROFILE="king008"
+REGION="eu-west-2"
 JOB_NAME_PREFIX="glue-engineering-development-sample-data-generator"
 
 echo "🎯 Starting AWS Glue Job"
@@ -14,7 +15,7 @@ echo "========================"
 echo ""
 
 # Get AWS Account ID (for reference)
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile ${PROFILE})
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile ${PROFILE} --region ${REGION})
 echo "Account: $ACCOUNT_ID"
 echo "Profile: $PROFILE"
 echo "Job Name: $JOB_NAME_PREFIX"
@@ -25,6 +26,7 @@ echo "🚀 Starting job run..."
 RUN_ID=$(aws glue start-job-run \
     --job-name $JOB_NAME_PREFIX \
     --profile $PROFILE \
+    --region $REGION \
     --query 'JobRunId' \
     --output text)
 
@@ -48,6 +50,7 @@ if [[ $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
             --job-name $JOB_NAME_PREFIX \
             --run-id $RUN_ID \
             --profile $PROFILE \
+            --region $REGION \
             --query 'JobRun.[State,ExecutionTime]' \
             --output text)
         
@@ -66,7 +69,7 @@ if [[ $REPLY =~ ^[Yy][Ee][Ss]$ ]]; then
     done
 else
     echo "View job status with:"
-    echo "aws glue get-job-run --job-name $JOB_NAME_PREFIX --run-id $RUN_ID --profile $PROFILE"
+    echo "aws glue get-job-run --job-name $JOB_NAME_PREFIX --run-id $RUN_ID --profile $PROFILE --region $REGION"
 fi
 
 echo ""

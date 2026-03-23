@@ -17,25 +17,45 @@ NC='\033[0m' # No Color
 
 show_menu() {
     echo ""
-    echo -e "${BLUE}================================${NC}"
-    echo -e "${BLUE}AWS Glue Project - Main Menu${NC}"
-    echo -e "${BLUE}================================${NC}"
+    echo -e "${BLUE}════════════════════════════════════${NC}"
+    echo -e "${BLUE}  AWS Glue Project - Main Menu${NC}"
+    echo -e "${BLUE}════════════════════════════════════${NC}"
     echo ""
-    echo "1) Deploy Infrastructure (Terraform)"
-    echo "2) Upload Glue Scripts to S3"
-    echo "3) Run Glue Job"
-    echo "4) View Glue Job Logs"
-    echo "5) List S3 Glue Scripts"
-    echo "6) Clean S3 Bucket"
-    echo "7) Destroy Infrastructure ⚠️"
-    echo "8) Exit"
+    echo -e "${GREEN}🚀 QUICK DEPLOY:${NC}"
+    echo "1) Deploy Everything (Infra + Code + Job)"
     echo ""
-    read -p "Select an option (1-8): " choice
+    echo -e "${GREEN}📦 STEP-BY-STEP:${NC}"
+    echo "2) Deploy Infrastructure (Terraform)"
+    echo "3) Upload Glue Scripts to S3"
+    echo "4) Run Glue Job (Iceberg format)"
+    echo "5) Run Glue Job (Parquet format)"
+    echo ""
+    echo -e "${GREEN}🔧 UTILITIES:${NC}"
+    echo "6) Redeploy (Update Infra + Code)"
+    echo "7) View Glue Job Logs"
+    echo "8) List S3 Glue Scripts"
+    echo "9) Clean S3 Bucket"
+    echo ""
+    echo -e "${RED}⚠️  DANGEROUS:${NC}"
+    echo "10) Destroy Infrastructure"
+    echo "11) Exit"
+    echo ""
+    read -p "Select an option (1-11): " choice
 }
 
 deploy_infrastructure() {
     echo -e "${YELLOW}Deploying infrastructure...${NC}"
     bash "$SCRIPTS_DIR/deploy_infrastructure.sh"
+}
+
+deploy_everything() {
+    echo -e "${YELLOW}Running complete deployment pipeline...${NC}"
+    bash "$SCRIPTS_DIR/deploy_all.sh"
+}
+
+redeploy() {
+    echo -e "${YELLOW}Redeploying infrastructure and code...${NC}"
+    bash "$SCRIPTS_DIR/redeploy.sh"
 }
 
 upload_scripts() {
@@ -44,8 +64,18 @@ upload_scripts() {
 }
 
 run_job() {
-    echo -e "${YELLOW}Running Glue job...${NC}"
+    echo -e "${YELLOW}Running Glue job (Iceberg format)...${NC}"
     bash "$SCRIPTS_DIR/run_glue_job.sh"
+}
+
+run_job_parquet() {
+    echo -e "${YELLOW}Running Glue job (Parquet format)...${NC}"
+    bash "$SCRIPTS_DIR/run_glue_job_with_format.sh" parquet
+}
+
+run_job_iceberg() {
+    echo -e "${YELLOW}Running Glue job (Iceberg format)...${NC}"
+    bash "$SCRIPTS_DIR/run_glue_job_with_format.sh" iceberg
 }
 
 view_logs() {
@@ -85,14 +115,17 @@ main() {
         show_menu
         
         case $choice in
-            1) deploy_infrastructure ;;
-            2) upload_scripts ;;
-            3) run_job ;;
-            4) view_logs ;;
-            5) list_scripts ;;
-            6) clean_bucket ;;
-            7) destroy_infrastructure ;;
-            8) 
+            1) deploy_everything ;;
+            2) deploy_infrastructure ;;
+            3) upload_scripts ;;
+            4) run_job_iceberg ;;
+            5) run_job_parquet ;;
+            6) redeploy ;;
+            7) view_logs ;;
+            8) list_scripts ;;
+            9) clean_bucket ;;
+            10) destroy_infrastructure ;;
+            11) 
                 echo -e "${GREEN}Goodbye!${NC}"
                 exit 0
                 ;;

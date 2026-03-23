@@ -7,6 +7,7 @@ set -e
 
 # Configuration
 PROFILE="king008"
+REGION="eu-west-2"
 
 # Color codes
 RED='\033[0;31m'
@@ -19,7 +20,7 @@ echo -e "${RED}⚠️  S3 BUCKET CLEANUP${NC}"
 echo ""
 
 # Get Account ID
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile ${PROFILE})
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile ${PROFILE} --region ${REGION})
 S3_BUCKET="glue-engineering-${ACCOUNT_ID}"
 
 echo "S3 Bucket: $S3_BUCKET"
