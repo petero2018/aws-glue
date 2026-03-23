@@ -41,31 +41,31 @@ job.init(args['JOB_NAME'], args)
 # Configuration
 s3_output_path = args['S3_OUTPUT_PATH']
 
-# Get output format from job parameters (default: parquet for now due to Glue limitations)
+# Get output format from job parameters (default: iceberg)
 # Pass --OUTPUT_FORMAT parquet or --OUTPUT_FORMAT iceberg when running the job
-output_format = args.get('OUTPUT_FORMAT', 'parquet').lower()
+output_format = args.get('OUTPUT_FORMAT', 'iceberg').lower()
 if output_format not in ['parquet', 'iceberg']:
-    output_format = 'parquet'  # Default to Parquet (more reliable)
+    output_format = 'iceberg'  # Default to Iceberg
 
 database_name = "iceberg_development"  # Must match your Glue catalog database
 
 # Configure Iceberg if requested
 if output_format == 'iceberg':
     try:
-        # Enable Iceberg in Spark session
-        spark.sql("CREATE DATABASE IF NOT EXISTS iceberg_development LOCATION 's3://{}/warehouse/'".format(
-            s3_output_path.split('/')[2]  # Extract bucket from path
-        ))
-        print("[INFO] Iceberg database configured")
+        # Enable Glue Data Catalog for Iceberg
+        spark.conf.set("spark.sql.catalog.glue_catalog", "org.apache.iceberg.spark.SparkCatalog")
+        spark.conf.set("spark.sql.catalog.glue_catalog.warehouse", f"s3://{s3_output_path.split('/')[2]}/warehouse")
+        spark.conf.set("spark.sql.catalog.glue_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
+        spark.conf.set("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
+        print("[INFO] Iceberg Spark extensions configured")
     except Exception as e:
-        print(f"[WARNING] Could not configure Iceberg: {e}")
-        print("[WARNING] Falling back to Parquet format")
-        output_format = 'parquet'
+        print(f"[INFO] Iceberg configuration: {e}")
 
 print("\n" + "=" * 80)
 print(f"Glue Job: {args['JOB_NAME']}")
 print(f"Output Path: {s3_output_path}")
 print(f"Output Format: {output_format.upper()}")
+print(f"Database: {database_name}")
 print("=" * 80 + "\n")
 
 # ==============================================================================

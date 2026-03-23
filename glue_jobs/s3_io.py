@@ -49,8 +49,14 @@ class S3DataWriter:
         """Write organizations data to S3."""
         if self.format == "iceberg":
             table_name = f"{self.database}.organizations"
-            df.write.format("iceberg").mode("overwrite").saveAsTable(table_name)
-            return table_name
+            try:
+                df.write.format("iceberg").mode("overwrite").option("write-format", "parquet").saveAsTable(table_name)
+                return table_name
+            except Exception as e:
+                print(f"[WARNING] Iceberg write failed: {e}. Falling back to Parquet.")
+                path = self._get_write_path("organizations")
+                df.write.mode("overwrite").parquet(path)
+                return path
         else:
             path = self._get_write_path("organizations")
             df.write.mode("overwrite").parquet(path)
@@ -60,8 +66,14 @@ class S3DataWriter:
         """Write products data to S3."""
         if self.format == "iceberg":
             table_name = f"{self.database}.products"
-            df.write.format("iceberg").mode("overwrite").saveAsTable(table_name)
-            return table_name
+            try:
+                df.write.format("iceberg").mode("overwrite").option("write-format", "parquet").saveAsTable(table_name)
+                return table_name
+            except Exception as e:
+                print(f"[WARNING] Iceberg write failed: {e}. Falling back to Parquet.")
+                path = self._get_write_path("products")
+                df.write.mode("overwrite").parquet(path)
+                return path
         else:
             path = self._get_write_path("products")
             df.write.mode("overwrite").parquet(path)
@@ -71,8 +83,14 @@ class S3DataWriter:
         """Write customers data to S3."""
         if self.format == "iceberg":
             table_name = f"{self.database}.customers"
-            df.write.format("iceberg").mode("overwrite").saveAsTable(table_name)
-            return table_name
+            try:
+                df.write.format("iceberg").mode("overwrite").option("write-format", "parquet").saveAsTable(table_name)
+                return table_name
+            except Exception as e:
+                print(f"[WARNING] Iceberg write failed: {e}. Falling back to Parquet.")
+                path = self._get_write_path("customers")
+                df.write.mode("overwrite").parquet(path)
+                return path
         else:
             path = self._get_write_path("customers")
             df.write.mode("overwrite").parquet(path)
@@ -82,8 +100,14 @@ class S3DataWriter:
         """Write orders data to S3."""
         if self.format == "iceberg":
             table_name = f"{self.database}.orders"
-            df.write.format("iceberg").mode("overwrite").saveAsTable(table_name)
-            return table_name
+            try:
+                df.write.format("iceberg").mode("overwrite").option("write-format", "parquet").saveAsTable(table_name)
+                return table_name
+            except Exception as e:
+                print(f"[WARNING] Iceberg write failed: {e}. Falling back to Parquet.")
+                path = self._get_write_path("orders")
+                df.write.mode("overwrite").parquet(path)
+                return path
         else:
             path = self._get_write_path("orders")
             df.write.mode("overwrite").parquet(path)
@@ -93,8 +117,14 @@ class S3DataWriter:
         """Write order items data to S3."""
         if self.format == "iceberg":
             table_name = f"{self.database}.order_items"
-            df.write.format("iceberg").mode("overwrite").saveAsTable(table_name)
-            return table_name
+            try:
+                df.write.format("iceberg").mode("overwrite").option("write-format", "parquet").saveAsTable(table_name)
+                return table_name
+            except Exception as e:
+                print(f"[WARNING] Iceberg write failed: {e}. Falling back to Parquet.")
+                path = self._get_write_path("order_items")
+                df.write.mode("overwrite").parquet(path)
+                return path
         else:
             path = self._get_write_path("order_items")
             df.write.mode("overwrite").parquet(path)
