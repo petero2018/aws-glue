@@ -39,6 +39,12 @@ variable "enable_vpc" {
   default     = true
 }
 
+variable "enable_msk" {
+  type        = bool
+  description = "Enable MSK Serverless cluster"
+  default     = true
+}
+
 variable "cloudwatch_log_retention_days" {
   type        = number
   description = "CloudWatch log retention in days"

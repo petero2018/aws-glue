@@ -48,6 +48,13 @@ locals {
   # IAM role naming
   glue_service_role_name = "${local.resource_name_prefix}-glue-service-role"
 
+  # MSK
+  msk_cluster_name        = "${local.resource_name_prefix}-msk"
+  msk_log_group           = "/aws/msk/${local.resource_name_prefix}"
+
+  # Glue Schema Registry
+  schema_registry_name    = "${local.resource_name_prefix}-registry"
+
   # Glue catalog database naming
   glue_catalog_database_name = "iceberg_${var.environment}"
 

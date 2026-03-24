@@ -11,7 +11,7 @@ resource "aws_glue_job" "sample_data_generator" {
   command {
     name            = "glueetl"
     script_location = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/sample_data_generator.py"
-    python_version  = "3.9"
+    python_version  = "3"
   }
 
   default_arguments = {

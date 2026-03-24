@@ -58,6 +58,21 @@ output "glue_vpc_connection_name" {
   value       = var.enable_vpc ? aws_glue_connection.vpc[0].name : null
 }
 
+output "msk_cluster_arn" {
+  description = "ARN of the MSK Serverless cluster"
+  value       = var.enable_msk ? aws_msk_serverless_cluster.main[0].arn : null
+}
+
+output "msk_glue_connection_name" {
+  description = "Name of the Glue Kafka connection — use in '--connections' of streaming jobs"
+  value       = var.enable_msk ? aws_glue_connection.msk[0].name : null
+}
+
+output "schema_registry_arn" {
+  description = "ARN of the Glue Schema Registry — use when creating schemas for Kafka topics"
+  value       = aws_glue_registry.msk_schemas.arn
+}
+
 output "resource_name_prefix" {
   description = "Resource naming prefix used for all resources"
   value       = local.resource_name_prefix

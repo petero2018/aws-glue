@@ -231,3 +231,62 @@ resource "aws_iam_role_policy" "glue_cloudwatch_metrics" {
     ]
   })
 }
+
+# Policy: MSK Serverless access (IAM auth for Kafka)
+resource "aws_iam_role_policy" "glue_msk_access" {
+  name   = "${local.resource_name_prefix}-msk-access"
+  role   = aws_iam_role.glue_service_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "MSKClusterAccess"
+        Effect = "Allow"
+        Action = [
+          "kafka:GetBootstrapBrokers",
+          "kafka:DescribeCluster",
+          "kafka:DescribeClusterV2",
+          "kafka:ListClusters",
+          "kafka:ListClustersV2"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "MSKIAMAuth"
+        Effect = "Allow"
+        Action = [
+          "kafka-cluster:Connect",
+          "kafka-cluster:AlterCluster",
+          "kafka-cluster:DescribeCluster",
+          "kafka-cluster:DescribeTopic",
+          "kafka-cluster:CreateTopic",
+          "kafka-cluster:ReadData",
+          "kafka-cluster:WriteData",
+          "kafka-cluster:AlterGroup",
+          "kafka-cluster:DescribeGroup"
+        ]
+        Resource = [
+          "arn:aws:kafka:${local.current_region}:${local.current_account_id}:cluster/${local.msk_cluster_name}/*",
+          "arn:aws:kafka:${local.current_region}:${local.current_account_id}:topic/${local.msk_cluster_name}/*",
+          "arn:aws:kafka:${local.current_region}:${local.current_account_id}:group/${local.msk_cluster_name}/*"
+        ]
+      },
+      {
+        Sid    = "GlueSchemaRegistryAccess"
+        Effect = "Allow"
+        Action = [
+          "glue:GetRegistry",
+          "glue:ListRegistries",
+          "glue:GetSchema",
+          "glue:ListSchemas",
+          "glue:GetSchemaVersion",
+          "glue:GetSchemaVersionValidity",
+          "glue:ListSchemaVersions",
+          "glue:QuerySchemaVersionMetadata",
+          "glue:RegisterSchemaVersion"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}

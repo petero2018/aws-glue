@@ -215,57 +215,22 @@ resource "aws_security_group" "glue_jobs" {
   })
 }
 
-# MSK security group — ready for when MSK is provisioned
+# MSK Serverless security group
+# Serverless only uses port 9098 (IAM/SASL_IAM) — no plaintext/TLS/ZooKeeper ports needed.
 resource "aws_security_group" "msk" {
   count = var.enable_vpc ? 1 : 0
 
   name        = local.msk_sg_name
-  description = "Security group for MSK Kafka brokers"
+  description = "Security group for MSK Serverless - IAM auth only (port 9098)"
   vpc_id      = aws_vpc.glue_vpc[0].id
 
-  # Plaintext Kafka — from Glue SG only
+  # IAM auth port — Glue SG only
   ingress {
-    description     = "Kafka plaintext from Glue"
-    from_port       = 9092
-    to_port         = 9092
-    protocol        = "tcp"
-    security_groups = [aws_security_group.glue_jobs[0].id]
-  }
-
-  # TLS Kafka — from Glue SG only
-  ingress {
-    description     = "Kafka TLS from Glue"
-    from_port       = 9094
-    to_port         = 9094
-    protocol        = "tcp"
-    security_groups = [aws_security_group.glue_jobs[0].id]
-  }
-
-  # IAM/SASL auth port — from Glue SG only
-  ingress {
-    description     = "Kafka IAM/SASL from Glue"
+    description     = "Kafka IAM/SASL_IAM from Glue"
     from_port       = 9098
     to_port         = 9098
     protocol        = "tcp"
     security_groups = [aws_security_group.glue_jobs[0].id]
-  }
-
-  # MSK broker inter-broker communication
-  ingress {
-    description = "MSK inter-broker"
-    from_port   = 9092
-    to_port     = 9098
-    protocol    = "tcp"
-    self        = true
-  }
-
-  # ZooKeeper (MSK manages this internally but rule is required)
-  ingress {
-    description = "ZooKeeper inter-broker"
-    from_port   = 2181
-    to_port     = 2181
-    protocol    = "tcp"
-    self        = true
   }
 
   egress {
@@ -277,7 +242,7 @@ resource "aws_security_group" "msk" {
   }
 
   tags = merge(local.common_tags, {
-    Name = "MSK Security Group"
+    Name = "MSK Serverless Security Group"
   })
 }
 
@@ -319,7 +284,7 @@ resource "aws_glue_connection" "vpc" {
   count = var.enable_vpc ? 1 : 0
 
   name            = "${local.resource_name_prefix}-vpc-connection"
-  description     = "VPC connection for Glue jobs — enables access to MSK and other VPC resources"
+  description     = "VPC connection for Glue jobs - enables access to MSK and other VPC resources"
   connection_type = "NETWORK"
 
   physical_connection_requirements {
@@ -330,5 +295,57 @@ resource "aws_glue_connection" "vpc" {
 
   tags = merge(local.common_tags, {
     Name = "Glue VPC Connection"
+  })
+}
+
+# =============================================================================
+# VPC ENDPOINTS
+# Route AWS API traffic (S3, Glue, MSK) through the VPC backbone instead of
+# the NAT Gateway — eliminates NAT data-processing charges for these services.
+# =============================================================================
+
+# S3 Gateway endpoint — free, routes S3 traffic privately (Iceberg reads/writes)
+resource "aws_vpc_endpoint" "s3" {
+  count = var.enable_vpc ? 1 : 0
+
+  vpc_id            = aws_vpc.glue_vpc[0].id
+  service_name      = "com.amazonaws.${local.current_region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private[0].id]
+
+  tags = merge(local.common_tags, {
+    Name = "${local.resource_name_prefix}-s3-endpoint"
+  })
+}
+
+# Glue Interface endpoint — Glue jobs call Glue APIs (catalog, sessions) privately
+resource "aws_vpc_endpoint" "glue" {
+  count = var.enable_vpc ? 1 : 0
+
+  vpc_id              = aws_vpc.glue_vpc[0].id
+  service_name        = "com.amazonaws.${local.current_region}.glue"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [aws_subnet.private_az1[0].id]
+  security_group_ids  = [aws_security_group.glue_jobs[0].id]
+  private_dns_enabled = true
+
+  tags = merge(local.common_tags, {
+    Name = "${local.resource_name_prefix}-glue-endpoint"
+  })
+}
+
+# CloudWatch Logs Interface endpoint — Glue job logs go privately (no NAT cost)
+resource "aws_vpc_endpoint" "cloudwatch_logs" {
+  count = var.enable_vpc ? 1 : 0
+
+  vpc_id              = aws_vpc.glue_vpc[0].id
+  service_name        = "com.amazonaws.${local.current_region}.logs"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = [aws_subnet.private_az1[0].id]
+  security_group_ids  = [aws_security_group.glue_jobs[0].id]
+  private_dns_enabled = true
+
+  tags = merge(local.common_tags, {
+    Name = "${local.resource_name_prefix}-logs-endpoint"
   })
 }
