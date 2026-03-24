@@ -49,17 +49,10 @@ if output_format not in ['parquet', 'iceberg']:
 
 database_name = "iceberg_development"  # Must match your Glue catalog database
 
-# Configure Iceberg if requested
-if output_format == 'iceberg':
-    try:
-        # Enable Glue Data Catalog for Iceberg
-        spark.conf.set("spark.sql.catalog.glue_catalog", "org.apache.iceberg.spark.SparkCatalog")
-        spark.conf.set("spark.sql.catalog.glue_catalog.warehouse", f"s3://{s3_output_path.split('/')[2]}/warehouse")
-        spark.conf.set("spark.sql.catalog.glue_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
-        spark.conf.set("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
-        print("[INFO] Iceberg Spark extensions configured")
-    except Exception as e:
-        print(f"[INFO] Iceberg configuration: {e}")
+# NOTE: AWS Glue 4.0 comes with Iceberg pre-configured
+# Do NOT set spark configs - Glue handles all configuration automatically
+# Just use the format parameter to control output
+print("[INFO] Using AWS Glue 4.0 built-in Iceberg support")
 
 print("\n" + "=" * 80)
 print(f"Glue Job: {args['JOB_NAME']}")
@@ -124,7 +117,8 @@ print("✓ DataFrames created\n")
 
 print("[3/3] Writing data to S3...")
 
-writer = S3DataWriter(s3_output_path, format=output_format, database=database_name)
+# Initialize writer with spark session for Iceberg support
+writer = S3DataWriter(spark, s3_output_path, format=output_format, database=database_name)
 paths = writer.write_all(org_df, product_df, customer_df, order_df, order_item_df)
 
 print("✓ Data written to S3:")

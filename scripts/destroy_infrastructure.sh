@@ -93,10 +93,11 @@ terraform apply tfplan_destroy
 
 echo ""
 echo -e "${RED}╔════════════════════════════════════════════════════════════╗${NC}"
-echo -e "${RED}║  ✓ All infrastructure has been destroyed                   ║${NC}"
+echo -e "${RED}║  ✓ Infrastructure destroyed (state backend preserved)      ║${NC}"
 echo -e "${RED}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
-echo "Note: Some resources may take a few minutes to fully delete in AWS."
+echo "State backend (state_bootstrap/) was NOT touched."
+echo "State backend is managed independently in: ./state_bootstrap/"
 echo ""
 
 # Cleanup

@@ -1,6 +1,7 @@
 """
 S3 I/O utilities for writing and reading Glue data.
-Handles Parquet and Iceberg formats with YYYY/MM/DD directory-based partitioning.
+Handles Parquet and Iceberg formats with Glue Catalog integration.
+Uses Iceberg v1 format with Glue Catalog for versioning and time-travel queries.
 """
 
 from datetime import datetime
@@ -9,18 +10,20 @@ from datetime import datetime
 class S3DataWriter:
     """Writes Spark DataFrames to S3 in various formats (Parquet or Iceberg)."""
 
-    def __init__(self, base_path, format="iceberg", database="iceberg_development", 
+    def __init__(self, spark, base_path, format="iceberg", database="iceberg_development", 
                  enable_partitioning=True, partition_date=None):
         """
         Initialize S3 data writer.
         
         Args:
+            spark (SparkSession): Spark session with Iceberg extensions configured
             base_path (str): Base S3 path (e.g., s3://bucket/warehouse)
             format (str): Format to use - "iceberg" or "parquet" (default: "iceberg")
-            database (str): Iceberg database name (default: "iceberg_development")
+            database (str): Glue Catalog database name (default: "iceberg_development")
             enable_partitioning (bool): Enable YYYY/MM/DD directory partitioning (default: True)
             partition_date (str): Date for partitioning in YYYY/MM/DD format (default: today)
         """
+        self.spark = spark
         self.base_path = base_path.rstrip("/")
         self.format = format.lower()
         self.database = database
@@ -45,90 +48,77 @@ class S3DataWriter:
         else:
             return f"{self.base_path}/{table_name}"
 
+    def _write_iceberg_table(self, df, table_name):
+        """
+        Write DataFrame to Glue Catalog as Iceberg table.
+        Creates or updates the table with versioning support.
+        AWS Glue 4.0 handles all Iceberg configuration automatically.
+        """
+        full_table_name = f"{self.database}.{table_name}"
+        warehouse_path = f"{self.base_path}/{table_name}"
+        
+        print(f"[INFO] Writing Iceberg table: {full_table_name}")
+        print(f"[INFO] Warehouse location: {warehouse_path}")
+        
+        try:
+            # Write to Iceberg format with Glue Catalog
+            # Glue 4.0 handles all configuration automatically
+            df.write \
+                .format("iceberg") \
+                .mode("overwrite") \
+                .saveAsTable(full_table_name)
+            
+            print(f"[SUCCESS] Iceberg table {full_table_name} created/updated")
+            return full_table_name
+        except Exception as e:
+            print(f"[ERROR] Failed to write Iceberg table {full_table_name}: {str(e)}")
+            # Try with Parquet fallback
+            print(f"[INFO] Falling back to Parquet format for {table_name}")
+            self._write_parquet_table(df, table_name)
+            return warehouse_path
+
+    def _write_parquet_table(self, df, table_name):
+        """Write DataFrame to S3 as Parquet."""
+        path = self._get_write_path(table_name)
+        print(f"[INFO] Writing Parquet: {path}")
+        df.write.mode("overwrite").parquet(path)
+        print(f"[SUCCESS] Parquet data written to {path}")
+        return path
+
     def write_organizations(self, df):
         """Write organizations data to S3."""
         if self.format == "iceberg":
-            table_name = f"{self.database}.organizations"
-            try:
-                df.write.format("iceberg").mode("overwrite").option("write-format", "parquet").saveAsTable(table_name)
-                return table_name
-            except Exception as e:
-                print(f"[WARNING] Iceberg write failed: {e}. Falling back to Parquet.")
-                path = self._get_write_path("organizations")
-                df.write.mode("overwrite").parquet(path)
-                return path
+            return self._write_iceberg_table(df, "organizations")
         else:
-            path = self._get_write_path("organizations")
-            df.write.mode("overwrite").parquet(path)
-            return path
+            return self._write_parquet_table(df, "organizations")
 
     def write_products(self, df):
         """Write products data to S3."""
         if self.format == "iceberg":
-            table_name = f"{self.database}.products"
-            try:
-                df.write.format("iceberg").mode("overwrite").option("write-format", "parquet").saveAsTable(table_name)
-                return table_name
-            except Exception as e:
-                print(f"[WARNING] Iceberg write failed: {e}. Falling back to Parquet.")
-                path = self._get_write_path("products")
-                df.write.mode("overwrite").parquet(path)
-                return path
+            return self._write_iceberg_table(df, "products")
         else:
-            path = self._get_write_path("products")
-            df.write.mode("overwrite").parquet(path)
-            return path
+            return self._write_parquet_table(df, "products")
 
     def write_customers(self, df):
         """Write customers data to S3."""
         if self.format == "iceberg":
-            table_name = f"{self.database}.customers"
-            try:
-                df.write.format("iceberg").mode("overwrite").option("write-format", "parquet").saveAsTable(table_name)
-                return table_name
-            except Exception as e:
-                print(f"[WARNING] Iceberg write failed: {e}. Falling back to Parquet.")
-                path = self._get_write_path("customers")
-                df.write.mode("overwrite").parquet(path)
-                return path
+            return self._write_iceberg_table(df, "customers")
         else:
-            path = self._get_write_path("customers")
-            df.write.mode("overwrite").parquet(path)
-            return path
+            return self._write_parquet_table(df, "customers")
 
     def write_orders(self, df):
         """Write orders data to S3."""
         if self.format == "iceberg":
-            table_name = f"{self.database}.orders"
-            try:
-                df.write.format("iceberg").mode("overwrite").option("write-format", "parquet").saveAsTable(table_name)
-                return table_name
-            except Exception as e:
-                print(f"[WARNING] Iceberg write failed: {e}. Falling back to Parquet.")
-                path = self._get_write_path("orders")
-                df.write.mode("overwrite").parquet(path)
-                return path
+            return self._write_iceberg_table(df, "orders")
         else:
-            path = self._get_write_path("orders")
-            df.write.mode("overwrite").parquet(path)
-            return path
+            return self._write_parquet_table(df, "orders")
 
     def write_order_items(self, df):
         """Write order items data to S3."""
         if self.format == "iceberg":
-            table_name = f"{self.database}.order_items"
-            try:
-                df.write.format("iceberg").mode("overwrite").option("write-format", "parquet").saveAsTable(table_name)
-                return table_name
-            except Exception as e:
-                print(f"[WARNING] Iceberg write failed: {e}. Falling back to Parquet.")
-                path = self._get_write_path("order_items")
-                df.write.mode("overwrite").parquet(path)
-                return path
+            return self._write_iceberg_table(df, "order_items")
         else:
-            path = self._get_write_path("order_items")
-            df.write.mode("overwrite").parquet(path)
-            return path
+            return self._write_parquet_table(df, "order_items")
 
     def write_all(self, org_df, product_df, customer_df, order_df, order_item_df):
         """
