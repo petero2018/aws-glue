@@ -89,6 +89,7 @@ resource "aws_iam_role_policy" "glue_catalog_access" {
           "glue:DeleteDatabase",
           "glue:GetTable",
           "glue:GetTables",
+          "glue:SearchTables",
           "glue:CreateTable",
           "glue:UpdateTable",
           "glue:DeleteTable",
@@ -98,12 +99,14 @@ resource "aws_iam_role_policy" "glue_catalog_access" {
           "glue:BatchCreatePartition",
           "glue:UpdatePartition",
           "glue:DeletePartition",
-          "glue:BatchDeletePartition"
+          "glue:BatchDeletePartition",
+          "glue:GetUserDefinedFunction",
+          "glue:GetUserDefinedFunctions"
         ]
         Resource = [
           "arn:aws:glue:${local.current_region}:${local.current_account_id}:catalog",
-          "arn:aws:glue:${local.current_region}:${local.current_account_id}:database/${local.glue_catalog_database_name}",
-          "arn:aws:glue:${local.current_region}:${local.current_account_id}:table/${local.glue_catalog_database_name}/*"
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:database/*",
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:table/*/*"
         ]
       },
       {
@@ -147,6 +150,60 @@ resource "aws_iam_role_policy" "glue_vpc_execution" {
           "ec2:DeleteNetworkInterfacePermission"
         ]
         Resource = "*"
+      }
+    ]
+  })
+}
+
+# Policy: Glue Interactive Sessions (for Jupyter/notebook usage)
+resource "aws_iam_role_policy" "glue_interactive_sessions" {
+  name   = "${local.resource_name_prefix}-interactive-sessions"
+  role   = aws_iam_role.glue_service_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "GlueInteractiveSessionsAccess"
+        Effect = "Allow"
+        Action = [
+          "glue:CreateSession",
+          "glue:DeleteSession",
+          "glue:GetSession",
+          "glue:ListSessions",
+          "glue:StopSession",
+          "glue:RunStatement",
+          "glue:GetStatement",
+          "glue:ListStatements",
+          "glue:CancelStatement"
+        ]
+        Resource = [
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:session/*"
+        ]
+      },
+      {
+        Sid    = "GlueTaggingAccess"
+        Effect = "Allow"
+        Action = [
+          "glue:TagResource",
+          "glue:UntagResource",
+          "glue:GetTags"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "PassRoleForInteractiveSessions"
+        Effect = "Allow"
+        Action = [
+          "iam:PassRole"
+        ]
+        Resource = [
+          "arn:aws:iam::${local.current_account_id}:role/${local.glue_service_role_name}"
+        ]
+        Condition = {
+          StringLike = {
+            "iam:PassedToService" = "glue.amazonaws.com"
+          }
+        }
       }
     ]
   })
