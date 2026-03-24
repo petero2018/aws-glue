@@ -71,7 +71,7 @@ resource "aws_iam_role_policy" "glue_cloudwatch_logs" {
   })
 }
 
-# Policy: Glue Catalog Access
+# Policy: Glue Catalog Access (including Iceberg support)
 resource "aws_iam_role_policy" "glue_catalog_access" {
   name   = "${local.resource_name_prefix}-catalog-access"
   role   = aws_iam_role.glue_service_role.id
@@ -79,9 +79,14 @@ resource "aws_iam_role_policy" "glue_catalog_access" {
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "GlueCatalogAccess"
         Effect = "Allow"
         Action = [
           "glue:GetDatabase",
+          "glue:GetDatabases",
+          "glue:CreateDatabase",
+          "glue:UpdateDatabase",
+          "glue:DeleteDatabase",
           "glue:GetTable",
           "glue:GetTables",
           "glue:CreateTable",
@@ -99,6 +104,21 @@ resource "aws_iam_role_policy" "glue_catalog_access" {
           "arn:aws:glue:${local.current_region}:${local.current_account_id}:catalog",
           "arn:aws:glue:${local.current_region}:${local.current_account_id}:database/${local.glue_catalog_database_name}",
           "arn:aws:glue:${local.current_region}:${local.current_account_id}:table/${local.glue_catalog_database_name}/*"
+        ]
+      },
+      {
+        Sid    = "IcebergMetadataAccess"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket",
+          "s3:ListBucketVersions"
+        ]
+        Resource = [
+          "arn:aws:s3:::${aws_s3_bucket.glue_data_bucket.id}/warehouse/*",
+          "arn:aws:s3:::${aws_s3_bucket.glue_data_bucket.id}/.iceberg/*"
         ]
       }
     ]

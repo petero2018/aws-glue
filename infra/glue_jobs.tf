@@ -15,11 +15,17 @@ resource "aws_glue_job" "sample_data_generator" {
   }
 
   default_arguments = {
+    # Iceberg configuration - CRITICAL for Iceberg table format support
+    "--datalake-formats"        = "iceberg"
+    
+    # Glue Data Catalog configuration
+    "--enable-glue-datacatalog" = "true"
+    
+    # Job parameters
     "--S3_OUTPUT_PATH"    = "s3://${aws_s3_bucket.glue_data_bucket.id}/warehouse"
     "--OUTPUT_FORMAT"     = "iceberg"
     "--TempDir"           = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-temp"
-    "--extra-py-files"    = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/data_generator.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/schemas.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/sample_data.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/s3_io.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/analytics.py"
-    "--enable-glue-datacatalog" = "true"
+    "--extra-py-files"    = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/base_glue_job.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/data_generator.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/schemas.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/sample_data.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/s3_io.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/analytics.py"
   }
 
   tags = merge(

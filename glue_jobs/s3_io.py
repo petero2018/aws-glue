@@ -50,32 +50,37 @@ class S3DataWriter:
 
     def _write_iceberg_table(self, df, table_name):
         """
-        Write DataFrame to Glue Catalog as Iceberg table.
-        Creates or updates the table with versioning support.
-        AWS Glue 4.0 handles all Iceberg configuration automatically.
+        Write DataFrame to Glue Catalog as Iceberg table using writeTo() API.
+        Uses glue_catalog prefix to reference the Iceberg catalog configured in SparkConf.
         """
-        full_table_name = f"{self.database}.{table_name}"
-        warehouse_path = f"{self.base_path}/{table_name}"
+        full_table_name = f"glue_catalog.{self.database}.{table_name}"
         
         print(f"[INFO] Writing Iceberg table: {full_table_name}")
-        print(f"[INFO] Warehouse location: {warehouse_path}")
         
         try:
-            # Write to Iceberg format with Glue Catalog
-            # Glue 4.0 handles all configuration automatically
-            df.write \
-                .format("iceberg") \
-                .mode("overwrite") \
-                .saveAsTable(full_table_name)
+            df.writeTo(full_table_name) \
+                .tableProperty("format-version", "2") \
+                .createOrReplace()
             
             print(f"[SUCCESS] Iceberg table {full_table_name} created/updated")
             return full_table_name
         except Exception as e:
-            print(f"[ERROR] Failed to write Iceberg table {full_table_name}: {str(e)}")
-            # Try with Parquet fallback
-            print(f"[INFO] Falling back to Parquet format for {table_name}")
-            self._write_parquet_table(df, table_name)
-            return warehouse_path
+            print(f"[ERROR] writeTo failed: {str(e)}")
+            try:
+                print(f"[INFO] Retrying with Spark SQL CREATE TABLE")
+                df.createOrReplaceTempView(f"tmp_{table_name}")
+                self.spark.sql(f"""
+                    CREATE OR REPLACE TABLE glue_catalog.{self.database}.{table_name}
+                    USING iceberg
+                    TBLPROPERTIES ("format-version"="2")
+                    AS SELECT * FROM tmp_{table_name}
+                """)
+                print(f"[SUCCESS] Iceberg table {full_table_name} created via SQL")
+                return full_table_name
+            except Exception as e2:
+                print(f"[ERROR] SQL CREATE also failed: {str(e2)}")
+                print(f"[INFO] Falling back to Parquet for {table_name}")
+                return self._write_parquet_table(df, table_name)
 
     def _write_parquet_table(self, df, table_name):
         """Write DataFrame to S3 as Parquet."""
@@ -169,41 +174,41 @@ class S3DataReader:
             raise ValueError("base_path is required for Parquet format")
 
     def read_organizations(self):
-        """Read organizations data from S3."""
+        """Read organizations data from S3 (Iceberg or Parquet)."""
         if self.format == "iceberg":
-            return self.spark.read.format("iceberg").load(f"{self.database}.organizations")
+            return self.spark.read.format("iceberg").load(f"glue_catalog.{self.database}.organizations")
         else:
             path = f"{self.base_path}/organizations"
             return self.spark.read.parquet(path)
 
     def read_products(self):
-        """Read products data from S3."""
+        """Read products data from S3 (Iceberg or Parquet)."""
         if self.format == "iceberg":
-            return self.spark.read.format("iceberg").load(f"{self.database}.products")
+            return self.spark.read.format("iceberg").load(f"glue_catalog.{self.database}.products")
         else:
             path = f"{self.base_path}/products"
             return self.spark.read.parquet(path)
 
     def read_customers(self):
-        """Read customers data from S3."""
+        """Read customers data from S3 (Iceberg or Parquet)."""
         if self.format == "iceberg":
-            return self.spark.read.format("iceberg").load(f"{self.database}.customers")
+            return self.spark.read.format("iceberg").load(f"glue_catalog.{self.database}.customers")
         else:
             path = f"{self.base_path}/customers"
             return self.spark.read.parquet(path)
 
     def read_orders(self):
-        """Read orders data from S3."""
+        """Read orders data from S3 (Iceberg or Parquet)."""
         if self.format == "iceberg":
-            return self.spark.read.format("iceberg").load(f"{self.database}.orders")
+            return self.spark.read.format("iceberg").load(f"glue_catalog.{self.database}.orders")
         else:
             path = f"{self.base_path}/orders"
             return self.spark.read.parquet(path)
 
     def read_order_items(self):
-        """Read order items data from S3."""
+        """Read order items data from S3 (Iceberg or Parquet)."""
         if self.format == "iceberg":
-            return self.spark.read.format("iceberg").load(f"{self.database}.order_items")
+            return self.spark.read.format("iceberg").load(f"glue_catalog.{self.database}.order_items")
         else:
             path = f"{self.base_path}/order_items"
             return self.spark.read.parquet(path)
