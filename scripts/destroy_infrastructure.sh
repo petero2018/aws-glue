@@ -40,26 +40,9 @@ if [[ ! "$confirm1" == "yes" ]]; then
 fi
 
 echo ""
-echo -e "${RED}Last chance to back out...${NC}"
-echo ""
-
-# Get Account ID for confirmation
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile ${PROFILE})
-echo "Account ID: $ACCOUNT_ID"
-echo "Region: eu-west-2"
-echo ""
-
-# Second confirmation - require typing account ID
-read -p "To confirm, type your AWS Account ID ($ACCOUNT_ID): " -r confirm2
-if [[ ! "$confirm2" == "$ACCOUNT_ID" ]]; then
-    echo -e "${GREEN}✓ Destruction cancelled (Account ID mismatch).${NC}"
-    exit 0
-fi
-
-echo ""
 echo -e "${YELLOW}Are you ABSOLUTELY SURE? Type 'destroy' to proceed:${NC}"
-read -p "> " -r confirm3
-if [[ ! "$confirm3" == "destroy" ]]; then
+read -p "> " -r confirm2
+if [[ ! "$confirm2" == "destroy" ]]; then
     echo -e "${GREEN}✓ Destruction cancelled.${NC}"
     exit 0
 fi
@@ -75,18 +58,47 @@ if [ ! -d "$INFRA_DIR" ]; then
     exit 1
 fi
 
+# Step 1: Delete Glue catalog tables and database
+# Terraform cannot delete a Glue database that still has tables in it.
+echo -e "${YELLOW}1️⃣  Deleting Glue catalog tables and database...${NC}"
+
+REGION="eu-west-2"
+DB_NAME="iceberg_development"
+
+TABLES=$(aws glue get-tables \
+    --database-name "$DB_NAME" \
+    --query 'TableList[*].Name' \
+    --output text \
+    --profile "$PROFILE" \
+    --region "$REGION" 2>/dev/null || echo "")
+
+if [[ -n "$TABLES" ]]; then
+    for table in $TABLES; do
+        echo "  Deleting table: $table"
+        aws glue delete-table \
+            --database-name "$DB_NAME" \
+            --name "$table" \
+            --profile "$PROFILE" \
+            --region "$REGION" 2>/dev/null && echo "  ✓ $table" || echo "  ⚠ $table not found, skipping"
+    done
+else
+    echo "  No tables found in $DB_NAME"
+fi
+
+echo ""
+
 cd $INFRA_DIR
 
-# Step 1: Show what will be destroyed
-echo -e "${YELLOW}1️⃣  Showing plan of resources to destroy...${NC}"
+# Step 2: Show what will be destroyed
+echo -e "${YELLOW}2️⃣  Showing plan of resources to destroy...${NC}"
 terraform plan -destroy -out=tfplan_destroy
 echo ""
 
-# Step 2: Ask one final time before destroying
+# Step 3: Ask one final time before destroying
 echo -e "${RED}Final confirmation: Press Enter to destroy, or Ctrl+C to cancel${NC}"
 read -r
 
-# Step 3: Destroy
+# Step 4: Destroy
 echo -e "${RED}⚠️  DESTROYING RESOURCES NOW...${NC}"
 echo ""
 terraform apply tfplan_destroy
