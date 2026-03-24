@@ -32,9 +32,18 @@ locals {
   # VPC naming
   vpc_name                    = "${local.resource_name_prefix}-vpc"
   vpc_cidr_block              = "10.0.0.0/16"
-  private_subnet_cidr_block   = "10.0.1.0/24"
+
+  # Public subnet (NAT Gateway lives here)
+  public_subnet_cidr          = "10.0.0.0/24"
+
+  # Private subnets across 3 AZs (Glue + MSK multi-AZ)
+  private_subnet_cidr_block   = "10.0.1.0/24"   # AZ-a  (existing, Glue)
+  private_subnet_cidr_az2     = "10.0.2.0/24"   # AZ-b  (MSK broker 2)
+  private_subnet_cidr_az3     = "10.0.3.0/24"   # AZ-c  (MSK broker 3)
+
   glue_sg_name                = "${local.resource_name_prefix}-glue-sg"
   database_access_sg_name     = "${local.resource_name_prefix}-db-access-sg"
+  msk_sg_name                 = "${local.resource_name_prefix}-msk-sg"
 
   # IAM role naming
   glue_service_role_name = "${local.resource_name_prefix}-glue-service-role"

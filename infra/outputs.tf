@@ -39,6 +39,25 @@ output "glue_security_group_id" {
   value       = var.enable_vpc ? aws_security_group.glue_jobs[0].id : null
 }
 
+output "msk_security_group_id" {
+  description = "ID of the MSK security group (use this when provisioning MSK)"
+  value       = var.enable_vpc ? aws_security_group.msk[0].id : null
+}
+
+output "private_subnet_ids" {
+  description = "IDs of all private subnets (use for MSK broker subnet_ids)"
+  value       = var.enable_vpc ? [
+    aws_subnet.private_az1[0].id,
+    aws_subnet.private_az2[0].id,
+    aws_subnet.private_az3[0].id,
+  ] : []
+}
+
+output "glue_vpc_connection_name" {
+  description = "Name of the Glue VPC connection (reference this in Glue streaming jobs)"
+  value       = var.enable_vpc ? aws_glue_connection.vpc[0].name : null
+}
+
 output "resource_name_prefix" {
   description = "Resource naming prefix used for all resources"
   value       = local.resource_name_prefix
