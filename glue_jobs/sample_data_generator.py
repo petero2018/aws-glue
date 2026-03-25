@@ -1,9 +1,16 @@
 """
 AWS Glue Job: Sample Data Generator
-Generates sample data and writes to S3 in Iceberg format.
+Generates sample data and writes to S3 in Iceberg or Parquet format.
+
+Iceberg mode: tables self-register in Glue Catalog on write.
+Parquet mode:  raw files are written to raw-parquet/, then the Glue Crawler
+               specified by CRAWLER_NAME is triggered to register tables in
+               the Glue Catalog so Athena can query them immediately.
 """
 
 import sys
+import time
+import boto3
 from awsglue.utils import getResolvedOptions
 from awsglue.job import Job
 
@@ -21,6 +28,11 @@ from analytics import DataAnalytics
 # ==============================================================================
 
 args = getResolvedOptions(sys.argv, ['JOB_NAME', 'S3_OUTPUT_PATH', 'OUTPUT_FORMAT', 'DATABASE_NAME'])
+
+# CRAWLER_NAME is optional — only passed for Parquet jobs
+crawler_name = None
+if '--CRAWLER_NAME' in sys.argv:
+    crawler_name = getResolvedOptions(sys.argv, ['CRAWLER_NAME'])['CRAWLER_NAME']
 
 # BaseGlueJob initializes SparkContext with Iceberg catalog configured via SparkConf
 glue_job = BaseGlueJob(args)
@@ -112,6 +124,45 @@ try:
 
 except Exception as e:
     print(f"[WARNING] Analytics failed (non-blocking): {str(e)}")
+
+# ==============================================================================
+# CRAWLER (Parquet only)
+# ==============================================================================
+# Iceberg tables self-register in the Glue Catalog on write.
+# Parquet files are plain S3 objects — the crawler discovers them and
+# creates/updates table definitions in the Catalog so Athena can query them.
+
+if output_format == "parquet" and crawler_name:
+    print(f"[Crawler] Starting crawler: {crawler_name}")
+    glue_client = boto3.client("glue")
+
+    # Start the crawler
+    try:
+        glue_client.start_crawler(Name=crawler_name)
+        print(f"[Crawler] Crawler {crawler_name} started")
+    except glue_client.exceptions.CrawlerRunningException:
+        print(f"[Crawler] Crawler {crawler_name} is already running — waiting for it to finish")
+
+    # Poll until READY (crawler finished) — timeout after 10 minutes
+    timeout_secs = 600
+    poll_interval = 15
+    elapsed = 0
+    while elapsed < timeout_secs:
+        response = glue_client.get_crawler(Name=crawler_name)
+        state = response["Crawler"]["State"]
+        print(f"[Crawler] State: {state} ({elapsed}s elapsed)")
+        if state == "READY":
+            last_crawl = response["Crawler"].get("LastCrawl", {})
+            status = last_crawl.get("Status", "UNKNOWN")
+            print(f"[Crawler] Finished with status: {status}")
+            if status == "FAILED":
+                error_msg = last_crawl.get("ErrorMessage", "no details")
+                print(f"[WARNING] Crawler failed: {error_msg} — tables may not be registered")
+            break
+        time.sleep(poll_interval)
+        elapsed += poll_interval
+    else:
+        print(f"[WARNING] Crawler did not finish within {timeout_secs}s — continuing anyway")
 
 # ==============================================================================
 # COMPLETION

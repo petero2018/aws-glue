@@ -28,7 +28,7 @@ resource "aws_glue_job" "sample_data_generator" {
   depends_on = [aws_iam_role_policy.glue_s3_access]
 }
 
-# AWS Glue Job: Sample Data Generator — Parquet format
+# AWS Glue Job: Sample Data Generator - Parquet format
 resource "aws_glue_job" "sample_data_generator_parquet" {
   name              = "${local.resource_name_prefix}-sample-data-generator-parquet"
   description       = "Generates sample data and writes to S3 in Parquet format (raw-parquet/)"
@@ -49,12 +49,55 @@ resource "aws_glue_job" "sample_data_generator_parquet" {
     "--S3_OUTPUT_PATH"          = "s3://${aws_s3_bucket.glue_data_bucket.id}/raw-parquet"
     "--OUTPUT_FORMAT"           = "parquet"
     "--DATABASE_NAME"           = local.glue_parquet_database_name
+    "--CRAWLER_NAME"            = aws_glue_crawler.raw_parquet.name
     "--TempDir"                 = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-temp"
     "--extra-py-files"          = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/base_glue_job.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/data_generator.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/schemas.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/sample_data.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/s3_io.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/analytics.py"
   }
 
   tags = merge(local.common_tags, { Name = "Sample Data Generator - Parquet" })
   depends_on = [aws_iam_role_policy.glue_s3_access]
+}
+
+# ============================================================================
+# Glue Crawler: Parquet raw data
+# ============================================================================
+# Crawls raw-parquet/ after the Parquet job runs, registering tables in the
+# Glue Catalog so Athena can query them without manual schema registration.
+
+resource "aws_glue_crawler" "raw_parquet" {
+  name          = "${local.resource_name_prefix}-raw-parquet-crawler"
+  description   = "Crawls raw-parquet/ and registers one table per folder in ${local.glue_parquet_database_name}"
+  role          = aws_iam_role.glue_service_role.arn
+  database_name = aws_glue_catalog_database.raw_parquet.name
+
+  # One s3_target per table folder so the crawler registers each as a separate table.
+  # Pointing at the root would merge everything into one table (raw_parquet).
+  s3_target { path = "s3://${aws_s3_bucket.glue_data_bucket.id}/raw-parquet/organizations" }
+  s3_target { path = "s3://${aws_s3_bucket.glue_data_bucket.id}/raw-parquet/products" }
+  s3_target { path = "s3://${aws_s3_bucket.glue_data_bucket.id}/raw-parquet/customers" }
+  s3_target { path = "s3://${aws_s3_bucket.glue_data_bucket.id}/raw-parquet/orders" }
+  s3_target { path = "s3://${aws_s3_bucket.glue_data_bucket.id}/raw-parquet/order_items" }
+
+  schema_change_policy {
+    update_behavior = "UPDATE_IN_DATABASE"
+    delete_behavior = "LOG"
+  }
+
+  recrawl_policy {
+    recrawl_behavior = "CRAWL_EVERYTHING"
+  }
+
+  configuration = jsonencode({
+    Version = 1.0
+    CrawlerOutput = {
+      Tables = { AddOrUpdateBehavior = "MergeNewColumns" }
+    }
+    Grouping = {
+      TableGroupingPolicy = "CombineCompatibleSchemas"
+    }
+  })
+
+  tags = merge(local.common_tags, { Name = "Raw Parquet Crawler" })
 }
 
 locals {
@@ -79,4 +122,9 @@ output "glue_job_parquet_name" {
 output "glue_job_parquet_arn" {
   description = "ARN of the Parquet sample data generator Glue job"
   value       = aws_glue_job.sample_data_generator_parquet.arn
+}
+
+output "glue_crawler_parquet_name" {
+  description = "Name of the Parquet crawler (triggered automatically at end of Parquet job)"
+  value       = aws_glue_crawler.raw_parquet.name
 }

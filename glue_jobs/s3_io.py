@@ -17,27 +17,36 @@ class S3DataWriter:
         
         Args:
             spark (SparkSession): Spark session with Iceberg extensions configured
-            base_path (str): Base S3 path (e.g., s3://bucket/warehouse)
+            base_path (str): Base S3 path (e.g., s3://bucket/raw-iceberg)
             format (str): Format to use - "iceberg" or "parquet" (default: "iceberg")
-            database (str): Glue Catalog database name (default: "iceberg_development")
-            enable_partitioning (bool): Enable YYYY/MM/DD directory partitioning (default: True)
+            database (str): Glue Catalog database name
+            enable_partitioning (bool): Enable YYYY/MM/DD directory partitioning.
+                                        Always disabled for Parquet — the Glue Crawler
+                                        needs a stable path per table (raw-parquet/{table}/)
+                                        to register one table per folder correctly.
             partition_date (str): Date for partitioning in YYYY/MM/DD format (default: today)
         """
         self.spark = spark
         self.base_path = base_path.rstrip("/")
         self.format = format.lower()
         self.database = database
-        self.enable_partitioning = enable_partitioning
-        
-        # Set partition date (default to today)
-        if partition_date:
-            self.partition_date = partition_date
-        elif enable_partitioning:
-            today = datetime.now()
-            self.partition_date = f"{today.year:04d}/{today.month:02d}/{today.day:02d}"
-        else:
+
+        # Parquet: always write to raw-parquet/{table}/ (no date subdir).
+        # This gives the Glue Crawler a stable, table-per-folder structure.
+        # Iceberg: date partitioning is irrelevant (Iceberg manages its own layout).
+        if self.format == "parquet":
+            self.enable_partitioning = False
             self.partition_date = None
-        
+        else:
+            self.enable_partitioning = enable_partitioning
+            if partition_date:
+                self.partition_date = partition_date
+            elif enable_partitioning:
+                today = datetime.now()
+                self.partition_date = f"{today.year:04d}/{today.month:02d}/{today.day:02d}"
+            else:
+                self.partition_date = None
+
         if self.format not in ["parquet", "iceberg"]:
             raise ValueError(f"Format must be 'parquet' or 'iceberg', got '{format}'")
 

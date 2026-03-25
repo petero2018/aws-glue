@@ -133,6 +133,20 @@ resource "aws_iam_role_policy" "glue_catalog_access" {
           "arn:aws:s3:::${aws_s3_bucket.glue_data_bucket.id}/raw-iceberg/*",
           "arn:aws:s3:::${aws_s3_bucket.glue_data_bucket.id}/raw-parquet/*"
         ]
+      },
+      {
+        # Allows the Parquet Glue job to trigger the crawler via boto3 at job end
+        # and poll its status until READY before committing.
+        Sid    = "CrawlerExecution"
+        Effect = "Allow"
+        Action = [
+          "glue:StartCrawler",
+          "glue:GetCrawler",
+          "glue:StopCrawler"
+        ]
+        Resource = [
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:crawler/${local.resource_name_prefix}-raw-parquet-crawler"
+        ]
       }
     ]
   })
