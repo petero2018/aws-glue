@@ -79,14 +79,21 @@ resource "aws_iam_role_policy" "glue_catalog_access" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "GlueCatalogAccess"
+        Sid    = "GlueCatalogRead"
         Effect = "Allow"
         Action = [
           "glue:GetDatabase",
-          "glue:GetDatabases",
-          "glue:CreateDatabase",
-          "glue:UpdateDatabase",
-          "glue:DeleteDatabase",
+          "glue:GetDatabases"
+        ]
+        Resource = [
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:catalog",
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:database/*"
+        ]
+      },
+      {
+        Sid    = "GlueCatalogTableOperations"
+        Effect = "Allow"
+        Action = [
           "glue:GetTable",
           "glue:GetTables",
           "glue:SearchTables",
@@ -101,12 +108,13 @@ resource "aws_iam_role_policy" "glue_catalog_access" {
           "glue:DeletePartition",
           "glue:BatchDeletePartition",
           "glue:GetUserDefinedFunction",
-          "glue:GetUserDefinedFunctions"
+          "glue:GetUserDefinedFunctions",
+          "glue:PutDataCatalogEncryptionSettings",
+          "glue:GetDataCatalogEncryptionSettings"
         ]
         Resource = [
-          "arn:aws:glue:${local.current_region}:${local.current_account_id}:catalog",
-          "arn:aws:glue:${local.current_region}:${local.current_account_id}:database/*",
-          "arn:aws:glue:${local.current_region}:${local.current_account_id}:table/*/*"
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:table/*/*",
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:catalog"
         ]
       },
       {
