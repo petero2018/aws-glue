@@ -19,26 +19,11 @@ resource "aws_athena_workgroup" "glue_engineering" {
     # Query results configuration
     result_configuration {
       output_location = "s3://${local.s3_bucket_name}-athena-results/results/"
-
-      # Optional: encrypt results with KMS (uses S3 default encryption if omitted)
-      # encryption_configuration {
-      #   encryption_option = "SSE_S3"
-      # }
     }
 
-    # Enforce workgroup configuration on all queries
-    enforce_workgroup_configuration = true
-
-    # Publish metrics to CloudWatch for monitoring
+    # Enforce workgroup configuration on all queries - results bucket is always used
+    enforce_workgroup_configuration    = true
     publish_cloudwatch_metrics_enabled = true
-
-    # Optional: Bytes scanned threshold to prevent runaway queries
-    # bytes_scanned_cutoff_per_query = 10737418240  # 10 GB limit
-
-    # Optional: Query timeout (default 30 mins)
-    # query_string {
-    #   max_query_string_length = 262144
-    # }
   }
 
   tags = merge(
@@ -47,6 +32,24 @@ resource "aws_athena_workgroup" "glue_engineering" {
       Name = "Glue Engineering Workgroup"
     }
   )
+}
+
+# Configure the Athena primary workgroup with a results bucket so that
+# console users who haven't switched workgroup can still run queries
+resource "aws_athena_workgroup" "primary" {
+  name          = "primary"
+  force_destroy = false
+  description   = "Default Athena workgroup"
+
+  configuration {
+    result_configuration {
+      output_location = "s3://${local.s3_bucket_name}-athena-results/results/primary/"
+    }
+
+    # Allow per-query override so console users can still specify their own location
+    enforce_workgroup_configuration    = false
+    publish_cloudwatch_metrics_enabled = true
+  }
 }
 
 # ============================================================================
