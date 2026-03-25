@@ -49,15 +49,35 @@ class BaseGlueJob:
 
     def _init_spark_context(self):
         """Initialize Spark context with Iceberg configuration."""
-        spark_conf = SparkConf().setAll(
-            self._get_spark_config() + self._get_iceberg_config()
-        )
-        self.glue = GlueContext(SparkContext.getOrCreate(spark_conf))
+        spark_config = self._get_spark_config() + self._get_iceberg_config()
+        
+        print("[INFO] ===== Spark Configuration =====")
+        for key, value in spark_config:
+            print(f"[INFO]   {key} = {value}")
+        print("[INFO] ===== End Configuration =====")
+        
+        # Important: Pass config to SparkContext BEFORE creating GlueContext
+        # This ensures Iceberg extensions are loaded
+        spark_conf = SparkConf().setAll(spark_config)
+        
+        # Get or create SparkContext with our config
+        sc = SparkContext.getOrCreate(spark_conf)
+        
+        # Create GlueContext with the configured SparkContext
+        self.glue = GlueContext(sc)
         self.spark = self.glue.spark_session
         
         print(f"[INFO] Spark session initialized with Iceberg support")
         print(f"[INFO] Warehouse path: {self.warehouse_path}")
         print(f"[INFO] Database: {self.database_name}")
+        
+        # Verify config was applied
+        print("[INFO] ===== Verify Spark Config =====")
+        print(f"[INFO] spark.sql.extensions = {self.spark.conf.get('spark.sql.extensions', 'NOT SET')}")
+        print(f"[INFO] spark.sql.catalog.glue_catalog = {self.spark.conf.get('spark.sql.catalog.glue_catalog', 'NOT SET')}")
+        print(f"[INFO] spark.sql.catalog.glue_catalog.warehouse = {self.spark.conf.get('spark.sql.catalog.glue_catalog.warehouse', 'NOT SET')}")
+        print("[INFO] ===== End Verify =====")
+
 
     def _get_spark_config(self):
         """Get base Spark configurations."""

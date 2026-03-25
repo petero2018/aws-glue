@@ -112,9 +112,11 @@ resource "aws_iam_role_policy" "glue_catalog_access" {
           "glue:PutDataCatalogEncryptionSettings",
           "glue:GetDataCatalogEncryptionSettings"
         ]
+        # Glue IAM evaluates table actions against both the database ARN and the table ARN
         Resource = [
-          "arn:aws:glue:${local.current_region}:${local.current_account_id}:table/*/*",
-          "arn:aws:glue:${local.current_region}:${local.current_account_id}:catalog"
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:catalog",
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:database/*",
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:table/*/*"
         ]
       },
       {
@@ -163,6 +165,133 @@ resource "aws_iam_role_policy" "glue_vpc_execution" {
   })
 }
 
+# ============================================================================
+# Athena Service Role and Policies
+# ============================================================================
+# Allows Athena to access Glue Catalog, S3 warehouse, and results bucket
+
+resource "aws_iam_role" "athena_service_role" {
+  name               = "${local.resource_name_prefix}-athena-service-role"
+  description        = "Service role for Athena workgroup accessing Glue Catalog and S3"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "athena.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = local.common_tags
+}
+
+# Policy: Athena query execution and metadata operations
+resource "aws_iam_role_policy" "athena_query_execution" {
+  name   = "${local.resource_name_prefix}-athena-query-execution"
+  role   = aws_iam_role.athena_service_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AthenaQueryExecution"
+        Effect = "Allow"
+        Action = [
+          "athena:GetWorkGroup",
+          "athena:GetDataCatalog",
+          "athena:GetDatabase",
+          "athena:GetTable",
+          "athena:GetTableVersion",
+          "athena:GetTableVersions",
+          "athena:DescribeTable",
+          "athena:ListTableMetadata",
+          "athena:ListDatabases",
+          "athena:ListDataCatalogs"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Policy: S3 access for Athena results bucket (read/write)
+resource "aws_iam_role_policy" "athena_s3_results_access" {
+  name   = "${local.resource_name_prefix}-athena-s3-results"
+  role   = aws_iam_role.athena_service_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AthenaResultsBucketAccess"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:GetBucketVersioning",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          "arn:aws:s3:::${local.s3_bucket_name}-athena-results",
+          "arn:aws:s3:::${local.s3_bucket_name}-athena-results/*"
+        ]
+      }
+    ]
+  })
+}
+
+# Policy: S3 access for Glue warehouse data (read-only for queries)
+resource "aws_iam_role_policy" "athena_s3_warehouse_access" {
+  name   = "${local.resource_name_prefix}-athena-s3-warehouse"
+  role   = aws_iam_role.athena_service_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AthenaWarehouseReadAccess"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          "arn:aws:s3:::${local.s3_bucket_name}",
+          "arn:aws:s3:::${local.s3_bucket_name}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# Policy: Glue Catalog access (read metadata for tables/partitions)
+resource "aws_iam_role_policy" "athena_glue_catalog_access" {
+  name   = "${local.resource_name_prefix}-athena-glue-catalog"
+  role   = aws_iam_role.athena_service_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "GlueCatalogRead"
+        Effect = "Allow"
+        Action = [
+          "glue:GetDatabase",
+          "glue:GetDatabases",
+          "glue:GetTable",
+          "glue:GetTables",
+          "glue:GetPartition",
+          "glue:GetPartitions",
+          "glue:GetCatalogImportStatus",
+          "glue:GetTableVersions",
+          "glue:GetTableVersion"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
 # Policy: Glue Interactive Sessions (for Jupyter/notebook usage)
 resource "aws_iam_role_policy" "glue_interactive_sessions" {
   name   = "${local.resource_name_prefix}-interactive-sessions"

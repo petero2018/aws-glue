@@ -50,37 +50,31 @@ class S3DataWriter:
 
     def _write_iceberg_table(self, df, table_name):
         """
-        Write DataFrame to Glue Catalog as Iceberg table using writeTo() API.
-        Uses glue_catalog prefix to reference the Iceberg catalog configured in SparkConf.
+        Write DataFrame to Glue Catalog as Iceberg table using the DataFrame writeTo API.
+        Uses df.writeTo() instead of CREATE TABLE SQL to avoid triggering
+        glue:CreateDatabase (which the SQL path calls as a namespace check).
         """
+        table_location = f"{self.base_path}/{table_name}"
         full_table_name = f"glue_catalog.{self.database}.{table_name}"
-        
+
         print(f"[INFO] Writing Iceberg table: {full_table_name}")
-        
+        print(f"[INFO] Table location: {table_location}")
+
         try:
             df.writeTo(full_table_name) \
                 .tableProperty("format-version", "2") \
+                .tableProperty("location", table_location) \
                 .createOrReplace()
-            
-            print(f"[SUCCESS] Iceberg table {full_table_name} created/updated")
+
+            print(f"[SUCCESS] Iceberg table {full_table_name} written")
             return full_table_name
+
         except Exception as e:
-            print(f"[ERROR] writeTo failed: {str(e)}")
-            try:
-                print(f"[INFO] Retrying with Spark SQL CREATE TABLE")
-                df.createOrReplaceTempView(f"tmp_{table_name}")
-                self.spark.sql(f"""
-                    CREATE OR REPLACE TABLE glue_catalog.{self.database}.{table_name}
-                    USING iceberg
-                    TBLPROPERTIES ("format-version"="2")
-                    AS SELECT * FROM tmp_{table_name}
-                """)
-                print(f"[SUCCESS] Iceberg table {full_table_name} created via SQL")
-                return full_table_name
-            except Exception as e2:
-                print(f"[ERROR] SQL CREATE also failed: {str(e2)}")
-                print(f"[INFO] Falling back to Parquet for {table_name}")
-                return self._write_parquet_table(df, table_name)
+            print(f"[ERROR] Iceberg writeTo failed: {type(e).__name__}: {str(e)}")
+            import traceback
+            print(f"[ERROR] Traceback:\n{traceback.format_exc()}")
+            print(f"[INFO] Falling back to Parquet for {table_name}")
+            return self._write_parquet_table(df, table_name)
 
     def _write_parquet_table(self, df, table_name):
         """Write DataFrame to S3 as Parquet."""

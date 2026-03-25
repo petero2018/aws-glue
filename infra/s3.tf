@@ -57,3 +57,65 @@ resource "aws_s3_object" "glue_temp_folder" {
   key    = "glue-temp/"
   content = ""
 }
+
+# ============================================================================
+# S3 Bucket for Athena Query Results
+# ============================================================================
+# Stores query outputs and metadata from Athena queries on Glue Catalog tables
+# Lifecycle policy auto-deletes results after 30 days to optimize storage costs
+
+resource "aws_s3_bucket" "athena_results" {
+  bucket = "${local.s3_bucket_name}-athena-results"
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name    = "Athena Query Results"
+      Purpose = "Stores Athena query outputs"
+    }
+  )
+}
+
+# Block all public access to Athena results bucket
+resource "aws_s3_bucket_public_access_block" "athena_results_pab" {
+  bucket = aws_s3_bucket.athena_results.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Enable server-side encryption for Athena results
+resource "aws_s3_bucket_server_side_encryption_configuration" "athena_results_sse" {
+  bucket = aws_s3_bucket.athena_results.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+# ============================================================================
+# S3 Lifecycle Policy: Auto-delete old Athena query results
+# ============================================================================
+# Keeps results for 30 days, then deletes to save on S3 storage costs
+# Results are typically accessed immediately; long-term storage not needed
+
+resource "aws_s3_bucket_lifecycle_configuration" "athena_results_lifecycle" {
+  bucket = aws_s3_bucket.athena_results.id
+
+  rule {
+    id     = "delete-old-athena-results"
+    status = "Enabled"
+
+    expiration {
+      days = 30
+    }
+
+    noncurrent_version_expiration {
+      noncurrent_days = 7
+    }
+  }
+}

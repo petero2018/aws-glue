@@ -73,6 +73,40 @@ output "schema_registry_arn" {
   value       = aws_glue_registry.msk_schemas.arn
 }
 
+# ============================================================================
+# Athena Outputs
+# ============================================================================
+
+output "athena_workgroup_name" {
+  description = "Name of the Athena workgroup for querying Glue Catalog"
+  value       = aws_athena_workgroup.glue_engineering.name
+}
+
+output "athena_workgroup_arn" {
+  description = "ARN of the Athena workgroup"
+  value       = aws_athena_workgroup.glue_engineering.arn
+}
+
+output "athena_results_bucket_name" {
+  description = "S3 bucket storing Athena query results"
+  value       = aws_s3_bucket.athena_results.id
+}
+
+output "athena_results_bucket_uri" {
+  description = "S3 URI for Athena query results (s3://bucket/results/)"
+  value       = "s3://${aws_s3_bucket.athena_results.id}/results/"
+}
+
+output "athena_glue_catalog_database" {
+  description = "Glue Catalog database name used by Athena queries"
+  value       = aws_glue_catalog_database.iceberg_data_lake.name
+}
+
+output "athena_query_example" {
+  description = "Example Athena query to start with"
+  value       = "SELECT * FROM ${local.glue_catalog_database_name}.organizations LIMIT 10;"
+}
+
 output "resource_name_prefix" {
   description = "Resource naming prefix used for all resources"
   value       = local.resource_name_prefix
