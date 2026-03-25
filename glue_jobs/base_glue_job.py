@@ -40,9 +40,11 @@ class BaseGlueJob:
         self.job_name = args.get("JOB_NAME", "glue-job")
         self.job_run_id = args.get("JOB_RUN_ID", f"{self.job_name}-{datetime.now().isoformat()}")
         
-        # S3 and database configuration
-        self.warehouse_path = args.get("S3_OUTPUT_PATH", "s3://glue-engineering/warehouse").rstrip("/")
-        self.database_name = args.get("DATABASE_NAME", "iceberg_development")
+        # S3 and database configuration — paths come from job default_arguments in Terraform:
+        # Iceberg job: S3_OUTPUT_PATH = s3://bucket/raw-iceberg, DATABASE_NAME = raw_iceberg_<env>
+        # Parquet job: S3_OUTPUT_PATH = s3://bucket/raw-parquet, DATABASE_NAME = raw_parquet_<env>
+        self.warehouse_path = args.get("S3_OUTPUT_PATH", "s3://glue-engineering/raw-iceberg").rstrip("/")
+        self.database_name = args.get("DATABASE_NAME", "raw_iceberg_development")
         
         # Initialize Spark and Glue contexts
         self._init_spark_context()

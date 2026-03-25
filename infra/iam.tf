@@ -130,8 +130,8 @@ resource "aws_iam_role_policy" "glue_catalog_access" {
           "s3:ListBucketVersions"
         ]
         Resource = [
-          "arn:aws:s3:::${aws_s3_bucket.glue_data_bucket.id}/warehouse/*",
-          "arn:aws:s3:::${aws_s3_bucket.glue_data_bucket.id}/.iceberg/*"
+          "arn:aws:s3:::${aws_s3_bucket.glue_data_bucket.id}/raw-iceberg/*",
+          "arn:aws:s3:::${aws_s3_bucket.glue_data_bucket.id}/raw-parquet/*"
         ]
       }
     ]

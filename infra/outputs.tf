@@ -24,8 +24,13 @@ output "glue_service_role_name" {
 }
 
 output "glue_catalog_database_name" {
-  description = "Name of the Glue catalog database"
-  value       = aws_glue_catalog_database.iceberg_data_lake.name
+  description = "Name of the Glue catalog Iceberg database"
+  value       = aws_glue_catalog_database.raw_iceberg.name
+}
+
+output "glue_catalog_parquet_database_name" {
+  description = "Name of the Glue catalog Parquet database"
+  value       = aws_glue_catalog_database.raw_parquet.name
 }
 
 
@@ -98,13 +103,13 @@ output "athena_results_bucket_uri" {
 }
 
 output "athena_glue_catalog_database" {
-  description = "Glue Catalog database name used by Athena queries"
-  value       = aws_glue_catalog_database.iceberg_data_lake.name
+  description = "Glue Catalog Iceberg database name used by Athena queries"
+  value       = aws_glue_catalog_database.raw_iceberg.name
 }
 
 output "athena_query_example" {
-  description = "Example Athena query to start with"
-  value       = "SELECT * FROM ${local.glue_catalog_database_name}.organizations LIMIT 10;"
+  description = "Example Athena query for Iceberg tables"
+  value       = "SELECT * FROM ${local.glue_iceberg_database_name}.organizations LIMIT 10;"
 }
 
 output "resource_name_prefix" {

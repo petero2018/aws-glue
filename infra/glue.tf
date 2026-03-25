@@ -1,16 +1,22 @@
-# AWS Glue Catalog Database
-resource "aws_glue_catalog_database" "iceberg_data_lake" {
-  name        = local.glue_catalog_database_name
-  description = "Iceberg data lake for Glue engineering"
+# Glue Catalog Database: Iceberg (raw-iceberg/)
+resource "aws_glue_catalog_database" "raw_iceberg" {
+  name        = local.glue_iceberg_database_name
+  description = "Iceberg format raw data lake"
   catalog_id  = local.current_account_id
-  # location_uri is intentionally omitted - warehouse path is managed via SparkConf
-  # in base_glue_job.py (spark.sql.catalog.glue_catalog.warehouse = s3://bucket/warehouse)
-  # Setting it here caused double-slash paths: warehouse//table
 
   parameters = {
     classification           = "iceberg"
     "iceberg.format-version" = "2"
   }
+
+  tags = local.common_tags
+}
+
+# Glue Catalog Database: Parquet (raw-parquet/)
+resource "aws_glue_catalog_database" "raw_parquet" {
+  name        = local.glue_parquet_database_name
+  description = "Parquet format raw data lake"
+  catalog_id  = local.current_account_id
 
   tags = local.common_tags
 }

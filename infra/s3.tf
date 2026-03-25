@@ -34,18 +34,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "glue_data_bucket_
 }
 
 # Create directory structure for Glue jobs
-resource "aws_s3_object" "raw_data_folder" {
-  bucket = aws_s3_bucket.glue_data_bucket.id
-  key    = "raw-data/"
-  content = ""
-}
-
-resource "aws_s3_object" "processed_data_folder" {
-  bucket = aws_s3_bucket.glue_data_bucket.id
-  key    = "processed-data/"
-  content = ""
-}
-
 resource "aws_s3_object" "glue_scripts_folder" {
   bucket = aws_s3_bucket.glue_data_bucket.id
   key    = "glue-scripts/"

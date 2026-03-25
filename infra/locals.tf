@@ -56,7 +56,8 @@ locals {
   schema_registry_name    = "${local.resource_name_prefix}-registry"
 
   # Glue catalog database naming
-  glue_catalog_database_name = "iceberg_${var.environment}"
+  glue_iceberg_database_name = "raw_iceberg_${var.environment}"
+  glue_parquet_database_name = "raw_parquet_${var.environment}"
 
   # Data sources
   current_account_id = data.aws_caller_identity.current.account_id

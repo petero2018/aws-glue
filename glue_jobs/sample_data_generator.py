@@ -20,7 +20,7 @@ from analytics import DataAnalytics
 # INITIALIZATION
 # ==============================================================================
 
-args = getResolvedOptions(sys.argv, ['JOB_NAME', 'S3_OUTPUT_PATH'])
+args = getResolvedOptions(sys.argv, ['JOB_NAME', 'S3_OUTPUT_PATH', 'OUTPUT_FORMAT', 'DATABASE_NAME'])
 
 # BaseGlueJob initializes SparkContext with Iceberg catalog configured via SparkConf
 glue_job = BaseGlueJob(args)
@@ -30,8 +30,8 @@ job = Job(glue_job.glue)
 job.init(args['JOB_NAME'], args)
 
 s3_output_path = glue_job.warehouse_path  # already rstrip('/') in BaseGlueJob
-output_format = args.get('OUTPUT_FORMAT', 'iceberg').lower()
-database_name = glue_job.database_name
+output_format = args['OUTPUT_FORMAT'].lower()
+database_name = args['DATABASE_NAME']
 
 print(f"[INFO] Job: {args['JOB_NAME']}")
 print(f"[INFO] Output Path: {s3_output_path}")
