@@ -1,6 +1,7 @@
 # S3 bucket for AWS Glue data engineering
 resource "aws_s3_bucket" "glue_data_bucket" {
-  bucket = local.s3_bucket_name
+  bucket        = local.s3_bucket_name
+  force_destroy = true
 
   tags = merge(
     local.common_tags,
@@ -53,7 +54,8 @@ resource "aws_s3_object" "glue_temp_folder" {
 # Lifecycle policy auto-deletes results after 30 days to optimize storage costs
 
 resource "aws_s3_bucket" "athena_results" {
-  bucket = "${local.s3_bucket_name}-athena-results"
+  bucket        = "${local.s3_bucket_name}-athena-results"
+  force_destroy = true
 
   tags = merge(
     local.common_tags,

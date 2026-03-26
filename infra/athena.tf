@@ -12,7 +12,7 @@
 resource "aws_athena_workgroup" "glue_engineering" {
   name            = "${local.resource_name_prefix}-workgroup"
   state           = "ENABLED"
-  force_destroy   = false
+  force_destroy   = true
   description     = "Workgroup for querying Glue Catalog Iceberg tables"
 
   configuration {
@@ -35,10 +35,15 @@ resource "aws_athena_workgroup" "glue_engineering" {
 }
 
 # Configure the Athena primary workgroup with a results bucket so that
-# console users who haven't switched workgroup can still run queries
+# console users who haven't switched workgroup can still run queries.
+# NOTE: The 'primary' workgroup is an AWS-reserved resource that cannot be
+# deleted via API (always returns 400). It is intentionally NOT managed by
+# Terraform destroy. If you need to re-apply, run:
+#   terraform state rm aws_athena_workgroup.primary
+# before terraform destroy.
 resource "aws_athena_workgroup" "primary" {
   name          = "primary"
-  force_destroy = false
+  force_destroy = true
   description   = "Default Athena workgroup"
 
   configuration {

@@ -58,47 +58,161 @@ if [ ! -d "$INFRA_DIR" ]; then
     exit 1
 fi
 
-# Step 1: Delete Glue catalog tables and database
-# Terraform cannot delete a Glue database that still has tables in it.
-echo -e "${YELLOW}1️⃣  Deleting Glue catalog tables and database...${NC}"
-
 REGION="eu-west-2"
-DB_NAME="iceberg_development"
+ENVIRONMENT="${TF_VAR_environment:-development}"
+ACCOUNT_ID=$(aws sts get-caller-identity --profile "$PROFILE" --query Account --output text 2>/dev/null || echo "613261654184")
+BUCKET_NAME="glue-engineering-${ACCOUNT_ID}"
+TABLE_BUCKET_NAME="glue-engineering-${ENVIRONMENT}-tables"
+TABLE_BUCKET_ARN="arn:aws:s3tables:${REGION}:${ACCOUNT_ID}:bucket/${TABLE_BUCKET_NAME}"
+TABLE_NAMESPACE="engineering"
 
-TABLES=$(aws glue get-tables \
-    --database-name "$DB_NAME" \
-    --query 'TableList[*].Name' \
-    --output text \
-    --profile "$PROFILE" \
-    --region "$REGION" 2>/dev/null || echo "")
+# -------------------------------------------------------------------------
+# Step 1: Empty S3 Tables namespace (tables must be deleted before namespace
+#         and bucket can be destroyed — no force_destroy on these resources)
+# -------------------------------------------------------------------------
+echo -e "${YELLOW}1️⃣  Emptying S3 Tables namespace '${TABLE_NAMESPACE}'...${NC}"
 
-if [[ -n "$TABLES" ]]; then
-    for table in $TABLES; do
-        echo "  Deleting table: $table"
-        aws glue delete-table \
-            --database-name "$DB_NAME" \
-            --name "$table" \
-            --profile "$PROFILE" \
-            --region "$REGION" 2>/dev/null && echo "  ✓ $table" || echo "  ⚠ $table not found, skipping"
-    done
+NAMESPACE_EXISTS=$(aws s3tables get-namespace \
+    --table-bucket-arn "$TABLE_BUCKET_ARN" \
+    --namespace "$TABLE_NAMESPACE" \
+    --profile "$PROFILE" --region "$REGION" \
+    --query 'namespace' --output text 2>/dev/null || echo "NOT_FOUND")
+
+if [[ "$NAMESPACE_EXISTS" != "NOT_FOUND" ]]; then
+    TABLES=$(aws s3tables list-tables \
+        --table-bucket-arn "$TABLE_BUCKET_ARN" \
+        --namespace "$TABLE_NAMESPACE" \
+        --profile "$PROFILE" --region "$REGION" \
+        --query 'tables[].name' --output text 2>/dev/null || echo "")
+    if [[ -n "$TABLES" ]]; then
+        for TABLE in $TABLES; do
+            echo "  Deleting table: $TABLE"
+            aws s3tables delete-table \
+                --table-bucket-arn "$TABLE_BUCKET_ARN" \
+                --namespace "$TABLE_NAMESPACE" \
+                --name "$TABLE" \
+                --profile "$PROFILE" --region "$REGION" 2>/dev/null \
+                && echo "  ✓ $TABLE" || echo "  ⚠ $TABLE not found, skipping"
+        done
+    else
+        echo "  No tables found in namespace."
+    fi
 else
-    echo "  No tables found in $DB_NAME"
+    echo "  Namespace not found, skipping."
 fi
+echo ""
 
+# -------------------------------------------------------------------------
+# Step 2: Empty S3 buckets (force_destroy handles objects but versioned
+#         buckets with delete markers need an explicit purge first)
+# -------------------------------------------------------------------------
+echo -e "${YELLOW}2️⃣  Emptying S3 buckets...${NC}"
+
+for BUCKET in "$BUCKET_NAME" "${BUCKET_NAME}-athena-results"; do
+    EXISTS=$(aws s3api head-bucket --bucket "$BUCKET" --profile "$PROFILE" --region "$REGION" 2>&1 || echo "NOT_FOUND")
+    if [[ "$EXISTS" == "NOT_FOUND" ]]; then
+        echo "  Bucket $BUCKET not found, skipping."
+        continue
+    fi
+    echo "  Emptying $BUCKET..."
+    # Delete all object versions and delete markers
+    aws s3api list-object-versions --bucket "$BUCKET" \
+        --profile "$PROFILE" --region "$REGION" \
+        --query '{Objects: Versions[].{Key:Key,VersionId:VersionId}}' \
+        --output json 2>/dev/null | \
+        python3 -c "
+import sys, json, subprocess
+data = json.load(sys.stdin)
+objs = data.get('Objects') or []
+if objs:
+    batch = {'Objects': objs, 'Quiet': True}
+    subprocess.run(['aws','s3api','delete-objects',
+        '--bucket','$BUCKET','--delete',json.dumps(batch),
+        '--profile','$PROFILE','--region','$REGION'], check=False)
+" 2>/dev/null || true
+    echo "  ✓ $BUCKET emptied."
+done
+echo ""
+
+# -------------------------------------------------------------------------
+# Step 3: Delete Athena workgroups with --recursive-delete-option which
+#         purges both named queries and query execution history in one call.
+#         Terraform's force_destroy does not pass this flag, so it fails if
+#         the workgroup has any query history. We delete manually here and
+#         then remove from state so Terraform skips the delete on apply.
+#         The reserved 'primary' workgroup is removed from state only.
+# -------------------------------------------------------------------------
+echo -e "${YELLOW}3️⃣  Deleting Athena workgroups...${NC}"
+
+WG="glue-engineering-${ENVIRONMENT}-workgroup"
+EXISTS=$(aws athena get-work-group --work-group "$WG" \
+    --profile "$PROFILE" --region "$REGION" \
+    --query 'WorkGroup.Name' --output text 2>/dev/null || echo "NOT_FOUND")
+if [[ "$EXISTS" != "NOT_FOUND" ]]; then
+    aws athena delete-work-group \
+        --work-group "$WG" \
+        --recursive-delete-option \
+        --profile "$PROFILE" --region "$REGION" 2>/dev/null \
+        && echo "  ✓ $WG deleted" || echo "  ⚠ $WG could not be deleted, skipping"
+else
+    echo "  $WG not found, skipping."
+fi
+echo ""
+
+# -------------------------------------------------------------------------
+# Step 4: Remove both workgroups from Terraform state so destroy doesn't
+#         try to call DeleteWorkGroup again (already done above, and
+#         'primary' can never be deleted by AWS API regardless).
+# -------------------------------------------------------------------------
+echo -e "${YELLOW}4️⃣  Removing Athena workgroups from Terraform state...${NC}"
+cd "$INFRA_DIR"
+for TF_WG in aws_athena_workgroup.glue_engineering aws_athena_workgroup.primary; do
+    terraform state rm "$TF_WG" 2>/dev/null \
+        && echo "  ✓ Removed $TF_WG from state." \
+        || echo "  $TF_WG already absent from state, skipping."
+done
+cd ..
+echo ""
+
+# -------------------------------------------------------------------------
+# Step 5: Delete Glue catalog tables and databases
+# -------------------------------------------------------------------------
+echo -e "${YELLOW}5️⃣  Deleting Glue catalog tables and databases...${NC}"
+
+for DB in "raw_iceberg_${ENVIRONMENT}" "raw_parquet_${ENVIRONMENT}"; do
+    DB_EXISTS=$(aws glue get-database --name "$DB" \
+        --profile "$PROFILE" --region "$REGION" \
+        --query 'Database.Name' --output text 2>/dev/null || echo "NOT_FOUND")
+    if [[ "$DB_EXISTS" == "NOT_FOUND" ]]; then
+        echo "  Database $DB not found, skipping."
+        continue
+    fi
+    TABLES=$(aws glue get-tables --database-name "$DB" \
+        --query 'TableList[*].Name' --output text \
+        --profile "$PROFILE" --region "$REGION" 2>/dev/null || echo "")
+    if [[ -n "$TABLES" ]]; then
+        for TABLE in $TABLES; do
+            aws glue delete-table --database-name "$DB" --name "$TABLE" \
+                --profile "$PROFILE" --region "$REGION" 2>/dev/null \
+                && echo "  ✓ $DB.$TABLE" || echo "  ⚠ $DB.$TABLE not found, skipping"
+        done
+    fi
+    echo "  ✓ $DB cleared."
+done
 echo ""
 
 cd $INFRA_DIR
 
-# Step 2: Show what will be destroyed
-echo -e "${YELLOW}2️⃣  Showing plan of resources to destroy...${NC}"
+# Step 6: Show what will be destroyed
+echo -e "${YELLOW}6️⃣  Showing plan of resources to destroy...${NC}"
 terraform plan -destroy -out=tfplan_destroy
 echo ""
 
-# Step 3: Ask one final time before destroying
+# Step 7: Ask one final time before destroying
 echo -e "${RED}Final confirmation: Press Enter to destroy, or Ctrl+C to cancel${NC}"
 read -r
 
-# Step 4: Destroy
+# Step 8: Destroy
 echo -e "${RED}⚠️  DESTROYING RESOURCES NOW...${NC}"
 echo ""
 terraform apply tfplan_destroy
