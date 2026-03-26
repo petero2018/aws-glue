@@ -80,3 +80,37 @@ resource "aws_athena_data_catalog" "glue_catalog" {
 # CloudWatch Resources
 # ============================================================================
 # Athena log groups and alarms are centralized in cloudwatch.tf for organization
+
+# ============================================================================
+# Lake Formation Settings
+# ============================================================================
+# By default Lake Formation blocks access to federated catalogs (e.g. S3 Tables)
+# even when IAM permissions are sufficient. Setting the account root as a data
+# lake admin grants unrestricted access and lets IAM policies be the sole
+# access control mechanism — the right approach for a single-account setup.
+
+resource "aws_lakeformation_data_lake_settings" "main" {
+  admins = [
+    "arn:aws:iam::${local.current_account_id}:root"
+  ]
+
+  # Preserve the default IAM_ALLOWED_PRINCIPALS behaviour for regular
+  # Glue Catalog databases (raw_iceberg, raw_parquet)
+  create_database_default_permissions {
+    principal   = "IAM_ALLOWED_PRINCIPALS"
+    permissions = ["ALL"]
+  }
+
+  create_table_default_permissions {
+    principal   = "IAM_ALLOWED_PRINCIPALS"
+    permissions = ["ALL"]
+  }
+}
+
+# ============================================================================
+# Lake Formation Permissions — S3 Tables federated catalog
+# ============================================================================
+# The Terraform aws_lakeformation_permissions resource only accepts a plain
+# AWS account ID in catalog_id, but S3 Tables federated catalogs use a
+# composite ID ("account:catalog-name"). These grants therefore cannot be
+# managed by Terraform and are applied by register_s3tables_catalog.sh instead.

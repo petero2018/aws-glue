@@ -38,9 +38,15 @@ echo -e "${GREEN}✓ Infrastructure updated${NC}"
 echo ""
 
 # Step 3: Upload updated scripts to S3
-echo -e "${YELLOW}[3/3] Uploading updated Python scripts to S3...${NC}"
+echo -e "${YELLOW}[3/4] Uploading updated Python scripts to S3...${NC}"
 ./scripts/upload_glue_scripts.sh
 echo -e "${GREEN}✓ Code uploaded${NC}"
+echo ""
+
+# Step 4: Register S3 Tables federated catalog (idempotent — safe to re-run)
+echo -e "${YELLOW}[4/4] Registering S3 Tables federated catalog...${NC}"
+./scripts/register_s3tables_catalog.sh
+echo -e "${GREEN}✓ S3 Tables catalog registered${NC}"
 echo ""
 
 echo -e "${GREEN}✅ Redeploy complete!${NC}"

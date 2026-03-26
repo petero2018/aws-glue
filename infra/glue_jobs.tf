@@ -128,3 +128,62 @@ output "glue_crawler_parquet_name" {
   description = "Name of the Parquet crawler (triggered automatically at end of Parquet job)"
   value       = aws_glue_crawler.raw_parquet.name
 }
+
+# ============================================================================
+# AWS Glue Job: S3 Tables Pipeline
+# ============================================================================
+# Reads from raw-iceberg/ (Glue Catalog Iceberg tables) and engineers
+# curated Iceberg tables directly into the S3 Table Bucket via the
+# Iceberg REST Catalog. Uses Glue 4.0 with the S3 Tables catalog connector.
+
+resource "aws_glue_job" "s3tables_pipeline" {
+  name              = "${local.resource_name_prefix}-s3tables-pipeline"
+  description       = "Engineers curated Iceberg tables into the S3 Table Bucket via REST catalog"
+  role_arn          = aws_iam_role.glue_service_role.arn
+  glue_version      = "5.0"
+  worker_type       = "G.2X"
+  number_of_workers = 2
+  timeout           = 60
+
+  command {
+    name            = "glueetl"
+    script_location = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/s3tables_pipeline.py"
+    python_version  = "3"
+  }
+
+  default_arguments = {
+    "--enable-glue-datacatalog" = "true"
+
+    # Job parameters
+    "--SOURCE_DATABASE"      = local.glue_iceberg_database_name
+    "--SOURCE_PATH"          = "s3://${aws_s3_bucket.glue_data_bucket.id}/raw-iceberg"
+    "--TABLE_BUCKET_ARN"     = aws_s3tables_table_bucket.main.arn
+    "--NAMESPACE"            = local.s3_table_namespace
+    "--TempDir"              = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-temp"
+    "--extra-py-files"       = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/base_glue_job.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/schemas.py"
+    "--extra-jars"           = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/jars/s3-tables-catalog-for-iceberg-runtime.jar"
+  }
+
+  tags       = merge(local.common_tags, { Name = "S3 Tables Pipeline" })
+  depends_on = [aws_iam_role_policy.glue_s3tables_access]
+}
+
+output "glue_s3tables_job_name" {
+  description = "Name of the S3 Tables pipeline Glue job"
+  value       = aws_glue_job.s3tables_pipeline.name
+}
+
+output "s3_table_bucket_arn" {
+  description = "ARN of the S3 Table Bucket"
+  value       = aws_s3tables_table_bucket.main.arn
+}
+
+output "s3_table_bucket_name" {
+  description = "Name of the S3 Table Bucket"
+  value       = aws_s3tables_table_bucket.main.name
+}
+
+output "s3_table_namespace" {
+  description = "Namespace inside the S3 Table Bucket"
+  value       = local.s3_table_namespace
+}

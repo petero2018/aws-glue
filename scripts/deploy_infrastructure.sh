@@ -55,9 +55,20 @@ echo ""
 echo "✅ Infrastructure deployed successfully!"
 echo ""
 
+cd ..
+
+# Step 6: Upload JARs to S3
+echo "6️⃣  Uploading Glue JARs..."
+bash scripts/upload_jars.sh
+echo ""
+
+# Step 7: Register S3 Table Bucket as Glue federated catalog (for Athena)
+echo "7️⃣  Registering S3 Tables federated catalog..."
+bash scripts/register_s3tables_catalog.sh
+echo ""
+
 # Display outputs
 echo "📋 Deployment Summary:"
 echo "====================="
-terraform output -json | jq '.' 2>/dev/null || terraform output
-
+cd infra && terraform output -json | jq '.' 2>/dev/null || terraform output
 cd ..

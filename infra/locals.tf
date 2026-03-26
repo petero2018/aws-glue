@@ -59,6 +59,10 @@ locals {
   glue_iceberg_database_name = "raw_iceberg_${var.environment}"
   glue_parquet_database_name = "raw_parquet_${var.environment}"
 
+  # S3 Tables (table bucket + namespace)
+  s3_table_bucket_name       = "${local.resource_name_prefix}-tables"
+  s3_table_namespace         = "engineering"
+
   # Data sources
   current_account_id = data.aws_caller_identity.current.account_id
   current_region     = data.aws_region.current.id

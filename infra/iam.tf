@@ -152,6 +152,79 @@ resource "aws_iam_role_policy" "glue_catalog_access" {
   })
 }
 
+# Policy: S3 Tables Access
+# Grants the Glue service role full access to the S3 table bucket so the
+# Iceberg REST catalog (used by the S3 Tables pipeline job) can read/write
+# table data and metadata without going through the GlueCatalog impl.
+resource "aws_iam_role_policy" "glue_s3tables_access" {
+  name   = "${local.resource_name_prefix}-s3tables-access"
+  role   = aws_iam_role.glue_service_role.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "S3TablesBucketAccess"
+        Effect = "Allow"
+        Action = [
+          "s3tables:GetTableBucket",
+          "s3tables:ListTableBuckets",
+          "s3tables:CreateNamespace",
+          "s3tables:GetNamespace",
+          "s3tables:ListNamespaces",
+          "s3tables:DeleteNamespace",
+          "s3tables:CreateTable",
+          "s3tables:GetTable",
+          "s3tables:ListTables",
+          "s3tables:DeleteTable",
+          "s3tables:UpdateTableMetadataLocation",
+          "s3tables:GetTableMetadataLocation",
+          "s3tables:GetTableData",
+          "s3tables:PutTableData"
+        ]
+        Resource = [
+          aws_s3tables_table_bucket.main.arn,
+          "${aws_s3tables_table_bucket.main.arn}/*"
+        ]
+      },
+      {
+        # S3 Tables internally uses a managed S3 bucket — allow the job to read
+        # and write through the REST catalog endpoint
+        Sid    = "S3TablesS3Access"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket",
+          "s3:AbortMultipartUpload",
+          "s3:ListMultipartUploadParts"
+        ]
+        Resource = [
+          "arn:aws:s3:::${local.s3_table_bucket_name}--*",
+          "arn:aws:s3:::${local.s3_table_bucket_name}--*/*"
+        ]
+      },
+      {
+        # Glue read permissions needed by the S3TablesCatalog JAR to resolve
+        # catalog metadata when the Glue job runs
+        Sid    = "S3TablesGlueCatalogFederation"
+        Effect = "Allow"
+        Action = [
+          "glue:GetDatabase",
+          "glue:GetDatabases",
+          "glue:GetTable",
+          "glue:GetTables"
+        ]
+        Resource = [
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:catalog",
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:catalog/s3tablescatalog/${local.s3_table_bucket_name}",
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:catalog/s3tablescatalog/${local.s3_table_bucket_name}/*"
+        ]
+      }
+    ]
+  })
+}
+
 # Policy: VPC Execution (for jobs running in VPC)
 resource "aws_iam_role_policy" "glue_vpc_execution" {
   name   = "${local.resource_name_prefix}-vpc-execution"
