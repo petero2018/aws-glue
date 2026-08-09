@@ -71,6 +71,10 @@ logs. Do not casually reduce permissions before checking the first plan: the
 deployment will fail in non-obvious places, especially around IAM, Lake
 Formation, networking and MSK.
 
+For a low-cost development deployment, leave `enable_msk = false`. If private
+network access is not needed by the Glue jobs, also consider `enable_vpc =
+false`; the VPC configuration includes a NAT Gateway and interface endpoints.
+
 ## First-time order
 
 ```text

@@ -314,7 +314,8 @@ LIMIT 10;
 
 ### Workgroup
 
-Use either `glue-engineering-development-workgroup` or the `primary` workgroup. Both are configured with the same Athena results bucket.
+Use `glue-engineering-development-workgroup`. The AWS-reserved `primary`
+workgroup is not managed by Terraform.
 
 ---
 

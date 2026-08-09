@@ -55,6 +55,7 @@ print(f"[INFO] Database: {database_name}")
 # ==============================================================================
 
 print("[1/3] Generating sample data...")
+print("[INFO] Customer PII fields are synthetic only (national_id values use the FAKE-NID prefix).")
 
 generator = DataGenerator(seed=42)
 

@@ -31,6 +31,13 @@ LAST_NAMES = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Mille
 # Cities for customer addresses
 CITIES = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Toronto", "London", "Manchester", "Vancouver", "Ottawa"]
 
+# Address components for synthetic PII. These are intentionally generic and
+# are not sourced from real customer records.
+STREET_NAMES = [
+    "Example Street", "Sample Avenue", "Synthetic Road", "Test Lane",
+    "Demo Boulevard", "Fictional Way",
+]
+
 # Customer segments
 CUSTOMER_SEGMENTS = ["Premium", "Standard", "Basic"]
 

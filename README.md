@@ -260,5 +260,12 @@ Account root is set as LF data lake admin with `IAM_ALLOWED_PRINCIPALS` defaults
 | `environment` | `development` | `development` / `staging` / `production` |
 | `project_name` | `glue-engineering` | Resource name prefix |
 | `cost_center` | `data-engineering` | Billing tag |
+| `enable_msk` | `false` | MSK Serverless is billable; enable explicitly only when needed |
 
 Override via `terraform.tfvars` or environment variables (`TF_VAR_environment=staging`).
+
+The VPC option is enabled by default for the original Glue networking setup,
+but it creates a NAT Gateway and interface endpoints. Those are separate
+billable networking resources, even when MSK is disabled. Set `enable_vpc = false`
+for a lower-cost non-VPC deployment if the Glue jobs do not need private-network
+access.

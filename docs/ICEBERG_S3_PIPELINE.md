@@ -147,11 +147,17 @@ Defined in `glue_jobs/schemas.py` as PySpark `StructType`:
 |---|---|
 | `organizations` | `org_id`, `org_name`, `industry`, `country` |
 | `products` | `product_id`, `org_id`, `product_name`, `category`, `price`, `stock_quantity` |
-| `customers` | `customer_id`, `first_name`, `last_name`, `email`, `city`, `country`, `customer_segment` |
+| `customers` | `customer_id`, `first_name`, `last_name`, `email`, `phone`, `date_of_birth`, `address_line1`, `postal_code`, `national_id`, `city`, `country`, `customer_segment` |
 | `orders` | `order_id`, `customer_id`, `org_id`, `order_date`, `total_amount`, `order_status` |
 | `order_items` | `order_item_id`, `order_id`, `product_id`, `quantity`, `unit_price`, `subtotal` |
 
 All columns are non-nullable. Iceberg stores the schema in its own metadata — the Glue Catalog entry is derived from it.
+
+The customer PII-shaped fields are synthetic test data only. Addresses are
+generic, emails use `example.com`, and `national_id` values intentionally use
+the `FAKE-NID-` prefix. Their Iceberg/Glue Catalog column descriptions are set
+to `PII=PII`; `orders.customer_id` is marked as PII because it links back to a
+customer record.
 
 ---
 

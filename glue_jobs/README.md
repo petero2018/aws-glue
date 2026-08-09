@@ -25,6 +25,10 @@ This Glue job generates realistic sample data with relationships that can be use
 - `last_name` (String) - Customer last name
 - `email` (String) - Email address
 - `phone` (String) - Phone number
+- `date_of_birth` (Date) - Synthetic date of birth
+- `address_line1` (String) - Synthetic street address
+- `postal_code` (String) - Synthetic postal code
+- `national_id` (String) - Synthetic ID with a `FAKE-NID-` prefix
 - `city` (String) - City
 - `country` (String) - Country
 - `signup_date` (Date) - Account creation date
@@ -63,7 +67,7 @@ Customers (1) ──────> (Many) Orders
 
 - **Organizations**: 5 unique organizations
 - **Products**: Variable number per organization (2-4 categories each)
-- **Customers**: 100 customer records
+- **Customers**: 100 customer records with synthetic PII-shaped fields only
 - **Orders**: 500 orders distributed across customers
 - **Order Items**: Multiple items per order with realistic quantities
 

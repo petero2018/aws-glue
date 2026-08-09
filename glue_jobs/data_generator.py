@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from sample_data import (
     ORGANIZATIONS, PRODUCT_CATEGORIES, PRODUCT_NAMES,
     FIRST_NAMES, LAST_NAMES, CITIES, CUSTOMER_SEGMENTS,
-    ORDER_STATUSES, COUNTRIES
+    ORDER_STATUSES, COUNTRIES, STREET_NAMES
 )
 
 
@@ -90,6 +90,12 @@ class DataGenerator:
                 "last_name": random.choice(LAST_NAMES),
                 "email": f"customer_{cust_id}@example.com",
                 "phone": f"+1{random.randint(2000000000, 9999999999)}",
+                "date_of_birth": (
+                    datetime.now() - timedelta(days=random.randint(18 * 365, 80 * 365))
+                ).date(),
+                "address_line1": f"{100 + cust_id} {random.choice(STREET_NAMES)}",
+                "postal_code": f"FAKE-{cust_id:04d}",
+                "national_id": f"FAKE-NID-{cust_id:06d}",
                 "city": random.choice(CITIES),
                 "country": random.choice(COUNTRIES),
                 "signup_date": (

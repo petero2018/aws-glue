@@ -11,6 +11,7 @@ ENV_AWS_PROFILE="${AWS_PROFILE:-}"
 ENV_AWS_REGION="${AWS_REGION:-}"
 ENVIRONMENT_OVERRIDE="${TF_VAR_environment:-}"
 PROJECT_NAME_OVERRIDE="${TF_VAR_project_name:-}"
+MSK_OVERRIDE="${TF_VAR_enable_msk:-}"
 
 if [[ -f "$LOCAL_CONFIG_FILE" ]]; then
     # shellcheck disable=SC1090
@@ -21,11 +22,12 @@ AWS_PROFILE="${ENV_AWS_PROFILE:-${AWS_PROFILE:-default}}"
 AWS_REGION="${ENV_AWS_REGION:-${AWS_REGION:-eu-west-2}}"
 TF_VAR_environment="${ENVIRONMENT_OVERRIDE:-${TF_VAR_environment:-development}}"
 TF_VAR_project_name="${PROJECT_NAME_OVERRIDE:-${TF_VAR_project_name:-glue-engineering}}"
+TF_VAR_enable_msk="${MSK_OVERRIDE:-${TF_VAR_enable_msk:-false}}"
 TF_VAR_aws_region="$AWS_REGION"
 
 AWS_DEFAULT_REGION="$AWS_REGION"
 export AWS_PROFILE AWS_REGION AWS_DEFAULT_REGION
-export TF_VAR_environment TF_VAR_project_name TF_VAR_aws_region
+export TF_VAR_environment TF_VAR_project_name TF_VAR_enable_msk TF_VAR_aws_region
 
 aws_account_id() {
     aws sts get-caller-identity \

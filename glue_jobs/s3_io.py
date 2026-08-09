@@ -75,15 +75,30 @@ class S3DataWriter:
                 .tableProperty("location", table_location) \
                 .createOrReplace()
 
-            print(f"[SUCCESS] Iceberg table {full_table_name} written")
-            return full_table_name
-
         except Exception as e:
             print(f"[ERROR] Iceberg writeTo failed: {type(e).__name__}: {str(e)}")
             import traceback
             print(f"[ERROR] Traceback:\n{traceback.format_exc()}")
             print(f"[INFO] Falling back to Parquet for {table_name}")
             return self._write_parquet_table(df, table_name)
+
+        self._apply_column_comments(df, full_table_name)
+        print(f"[SUCCESS] Iceberg table {full_table_name} written")
+        return full_table_name
+
+    def _apply_column_comments(self, df, full_table_name):
+        """Persist Spark field comments as Iceberg/Glue column descriptions."""
+        for field in df.schema.fields:
+            comment = field.metadata.get("comment")
+            if not comment:
+                continue
+
+            escaped_comment = comment.replace("'", "''")
+            self.spark.sql(
+                f"ALTER TABLE {full_table_name} "
+                f"ALTER COLUMN `{field.name}` COMMENT '{escaped_comment}'"
+            )
+            print(f"[INFO] Column comment applied: {full_table_name}.{field.name} = {comment}")
 
     def _write_parquet_table(self, df, table_name):
         """Write DataFrame to S3 as Parquet."""

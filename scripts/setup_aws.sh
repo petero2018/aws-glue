@@ -45,6 +45,7 @@ export AWS_REGION="$selected_region"
 export AWS_DEFAULT_REGION="$selected_region"
 export TF_VAR_environment="$selected_environment"
 export TF_VAR_project_name="$selected_project_name"
+export TF_VAR_enable_msk="${TF_VAR_enable_msk:-false}"
 export TF_VAR_aws_region="$selected_region"
 
 if ACCOUNT_ID=$(aws sts get-caller-identity \

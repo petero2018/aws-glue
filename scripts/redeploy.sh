@@ -29,6 +29,8 @@ echo ""
 echo -e "${YELLOW}[1/3] Validating Terraform configuration...${NC}"
 cd "$INFRA_DIR"
 terraform init -reconfigure -backend-config=backend.local.hcl
+# Remove a stale state entry from older revisions; AWS owns `primary`.
+terraform state rm aws_athena_workgroup.primary 2>/dev/null || true
 terraform validate
 cd "$PROJECT_ROOT"
 echo -e "${GREEN}✓ Terraform validation passed${NC}"

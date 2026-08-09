@@ -104,7 +104,7 @@ def ensure_table_registered(table_name: str):
     # Read source schema (0 rows — we just want the schema)
     source_df = spark.read.format("iceberg").load(src).limit(0)
     ddl_fields = ", ".join(
-        f"`{f.name}` {f.dataType.simpleString()}" for f in source_df.schema.fields
+        _field_to_ddl(f) for f in source_df.schema.fields
     )
 
     sql = f"""
@@ -120,6 +120,15 @@ def ensure_table_registered(table_name: str):
     print(f"[REGISTER] Ensuring table exists: {dest}")
     spark.sql(sql)
     print(f"[REGISTER] OK: {dest}")
+
+
+def _field_to_ddl(field):
+    """Convert a Spark field to Iceberg DDL, retaining column comments."""
+    comment = field.metadata.get("comment")
+    comment_sql = ""
+    if comment:
+        comment_sql = f" COMMENT '{comment.replace(chr(39), chr(39) * 2)}'"
+    return f"`{field.name}` {field.dataType.simpleString()}{comment_sql}"
 
 
 # ============================================================================

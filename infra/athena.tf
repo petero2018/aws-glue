@@ -10,10 +10,10 @@
 # Workgroups isolate query execution, settings, and billing across teams/projects
 
 resource "aws_athena_workgroup" "glue_engineering" {
-  name            = "${local.resource_name_prefix}-workgroup"
-  state           = "ENABLED"
-  force_destroy   = true
-  description     = "Workgroup for querying Glue Catalog Iceberg tables"
+  name          = "${local.resource_name_prefix}-workgroup"
+  state         = "ENABLED"
+  force_destroy = true
+  description   = "Workgroup for querying Glue Catalog Iceberg tables"
 
   configuration {
     # Query results configuration
@@ -34,28 +34,8 @@ resource "aws_athena_workgroup" "glue_engineering" {
   )
 }
 
-# Configure the Athena primary workgroup with a results bucket so that
-# console users who haven't switched workgroup can still run queries.
-# NOTE: The 'primary' workgroup is an AWS-reserved resource that cannot be
-# deleted via API (always returns 400). It is intentionally NOT managed by
-# Terraform destroy. If you need to re-apply, run:
-#   terraform state rm aws_athena_workgroup.primary
-# before terraform destroy.
-resource "aws_athena_workgroup" "primary" {
-  name          = "primary"
-  force_destroy = true
-  description   = "Default Athena workgroup"
-
-  configuration {
-    result_configuration {
-      output_location = "s3://${local.s3_bucket_name}-athena-results/results/primary/"
-    }
-
-    # Allow per-query override so console users can still specify their own location
-    enforce_workgroup_configuration    = false
-    publish_cloudwatch_metrics_enabled = true
-  }
-}
+# The AWS-reserved `primary` workgroup is always present and cannot be created
+# or deleted as a normal Terraform resource. Use the project workgroup above.
 
 # ============================================================================
 # Athena Data Catalog (Glue Catalog Reference)

@@ -32,6 +32,10 @@ terraform init -reconfigure -backend-config=backend.local.hcl
 echo "✓ Terraform initialized"
 echo ""
 
+# The AWS-reserved primary workgroup was managed by older repo revisions.
+# Remove a stale state entry if one exists; AWS keeps the workgroup itself.
+terraform state rm aws_athena_workgroup.primary 2>/dev/null || true
+
 # Step 2: Validate configuration
 echo "2️⃣  Validating Terraform configuration..."
 terraform validate
