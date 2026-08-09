@@ -13,6 +13,21 @@ output "glue_data_bucket_region" {
   value       = aws_s3_bucket.glue_data_bucket.region
 }
 
+output "aws_account_id" {
+  description = "AWS account ID resolved from the active Terraform credentials"
+  value       = local.current_account_id
+}
+
+output "snowflake_raw_iceberg_s3_role_arn" {
+  description = "Terraform-created role ARN for Snowflake S3 external-volume access"
+  value       = aws_iam_role.snowflake_raw_iceberg_s3.arn
+}
+
+output "snowflake_raw_iceberg_catalog_role_arn" {
+  description = "Terraform-created role ARN for Snowflake AWS Glue REST catalog access"
+  value       = aws_iam_role.snowflake_raw_iceberg_catalog.arn
+}
+
 output "glue_service_role_arn" {
   description = "ARN of the Glue service role"
   value       = aws_iam_role.glue_service_role.arn

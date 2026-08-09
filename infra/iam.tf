@@ -22,6 +22,148 @@ resource "aws_iam_role" "glue_service_role" {
   )
 }
 
+# ============================================================================
+# Snowflake access for the AWS Glue Iceberg REST catalog
+# ============================================================================
+# These roles are created by Terraform, but their trust relationships are
+# intentionally deny-by-default until Snowflake returns its IAM user ARN and
+# external ID from DESC EXTERNAL VOLUME / DESC CATALOG INTEGRATION.
+# The trust policies can be updated manually in AWS for now; automation can be
+# added later without changing the role or attached data-access policies.
+
+resource "aws_iam_role" "snowflake_raw_iceberg_s3" {
+  name        = local.snowflake_raw_iceberg_s3_role_name
+  description = "Read-only S3 access for Snowflake raw Iceberg external volume"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        AWS = "arn:aws:iam::${local.current_account_id}:root"
+      }
+      Action = "sts:AssumeRole"
+      Condition = {
+        StringEquals = {
+          "aws:PrincipalArn" = local.snowflake_unconfigured_iam_user_arn
+          "sts:ExternalId"   = "SNOWFLAKE_TRUST_NOT_CONFIGURED"
+        }
+      }
+    }]
+  })
+
+  # The Snowflake IAM user and external ID are only known after the Snowflake
+  # objects exist. Preserve the manual AWS trust-policy update for now.
+  lifecycle {
+    ignore_changes = [assume_role_policy]
+  }
+
+  tags = merge(local.common_tags, {
+    Name    = "Snowflake raw Iceberg S3 access"
+    Purpose = "Snowflake external volume"
+  })
+}
+
+resource "aws_iam_role_policy" "snowflake_raw_iceberg_s3_read" {
+  name = "${local.resource_name_prefix}-snowflake-iceberg-s3-read"
+  role = aws_iam_role.snowflake_raw_iceberg_s3.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ReadRawIcebergObjects"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion"
+        ]
+        Resource = "${aws_s3_bucket.glue_data_bucket.arn}/raw-iceberg/*"
+      },
+      {
+        Sid    = "ListRawIcebergPrefix"
+        Effect = "Allow"
+        Action = [
+          "s3:GetBucketLocation",
+          "s3:ListBucket"
+        ]
+        Resource = aws_s3_bucket.glue_data_bucket.arn
+        Condition = {
+          StringLike = {
+            "s3:prefix" = ["raw-iceberg", "raw-iceberg/*"]
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role" "snowflake_raw_iceberg_catalog" {
+  name        = local.snowflake_raw_iceberg_catalog_role_name
+  description = "Read-only AWS Glue Catalog access for Snowflake Iceberg REST integration"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        AWS = "arn:aws:iam::${local.current_account_id}:root"
+      }
+      Action = "sts:AssumeRole"
+      Condition = {
+        StringEquals = {
+          "aws:PrincipalArn" = local.snowflake_unconfigured_iam_user_arn
+          "sts:ExternalId"   = "SNOWFLAKE_TRUST_NOT_CONFIGURED"
+        }
+      }
+    }]
+  })
+
+  # The Snowflake IAM user and external ID are only known after the Snowflake
+  # objects exist. Preserve the manual AWS trust-policy update for now.
+  lifecycle {
+    ignore_changes = [assume_role_policy]
+  }
+
+  tags = merge(local.common_tags, {
+    Name    = "Snowflake raw Iceberg Glue catalog access"
+    Purpose = "Snowflake AWS Glue REST catalog integration"
+  })
+}
+
+resource "aws_iam_role_policy" "snowflake_raw_iceberg_catalog_read" {
+  name = "${local.resource_name_prefix}-snowflake-iceberg-catalog-read"
+  role = aws_iam_role.snowflake_raw_iceberg_catalog.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ReadRawIcebergGlueCatalog"
+        Effect = "Allow"
+        Action = [
+          "glue:GetCatalog",
+          "glue:GetDatabase",
+          "glue:GetDatabases",
+          "glue:GetTable",
+          "glue:GetTables"
+        ]
+        Resource = [
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:catalog",
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:database/${local.glue_iceberg_database_name}",
+          "arn:aws:glue:${local.current_region}:${local.current_account_id}:table/${local.glue_iceberg_database_name}/*"
+        ]
+      },
+      {
+        Sid      = "LakeFormationDataAccessIfEnabled"
+        Effect   = "Allow"
+        Action   = "lakeformation:GetDataAccess"
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # Policy: S3 Access for Glue Data Bucket
 resource "aws_iam_role_policy" "glue_s3_access" {
   name   = "${local.resource_name_prefix}-s3-access"

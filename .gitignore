@@ -243,6 +243,9 @@ terraform.rc
 .aws-glue.local
 infra/backend.local.hcl
 
+# Rendered Snowflake SQL contains account-specific role ARNs and configuration
+snowflake/*.local.sql
+
 # Ignore lock files (optional - recommended to commit in team environments)
 # .terraform.lock.hcl
 infra/terraform.tfvars.example

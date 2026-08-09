@@ -1,6 +1,8 @@
 # Copy this file to .aws-glue.local or use ./scripts/menu.sh -> 0) Setup AWS.
 # This file contains no credentials. Configure those via the AWS CLI under ~/.aws/.
-AWS_PROFILE=default
+AWS_PROFILE=myawsprofilenameforglue
 AWS_REGION=eu-west-2
+# Populated automatically by scripts/setup_aws.sh after AWS authentication.
+AWS_ACCOUNT_ID=
 TF_VAR_environment=development
 TF_VAR_project_name=glue-engineering

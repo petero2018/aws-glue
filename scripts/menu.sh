@@ -22,7 +22,7 @@ show_menu() {
     echo -e "${BLUE}════════════════════════════════════${NC}"
     echo ""
     if [[ -f "$LOCAL_CONFIG_FILE" ]]; then
-        echo -e "${GREEN}AWS: profile=${AWS_PROFILE}, region=${AWS_REGION}, environment=${TF_VAR_environment}${NC}"
+        echo -e "${GREEN}AWS: profile=${AWS_PROFILE}, account=${AWS_ACCOUNT_ID:-unknown}, region=${AWS_REGION}, environment=${TF_VAR_environment}${NC}"
     else
         echo -e "${YELLOW}AWS project config is not set up yet.${NC}"
     fi

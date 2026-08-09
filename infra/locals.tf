@@ -47,6 +47,13 @@ locals {
 
   # IAM role naming
   glue_service_role_name = "${local.resource_name_prefix}-glue-service-role"
+  snowflake_raw_iceberg_s3_role_name = "${local.resource_name_prefix}-snowflake-iceberg-s3"
+  snowflake_raw_iceberg_catalog_role_name = "${local.resource_name_prefix}-snowflake-iceberg-catalog"
+
+  # A deny-by-default trust target used until the Snowflake-generated IAM user
+  # ARN and external ID are supplied manually. This keeps the role safe during
+  # the two-phase Snowflake setup.
+  snowflake_unconfigured_iam_user_arn = "arn:aws:iam::${local.current_account_id}:user/SNOWFLAKE_TRUST_NOT_CONFIGURED"
 
   # MSK
   msk_cluster_name        = "${local.resource_name_prefix}-msk"

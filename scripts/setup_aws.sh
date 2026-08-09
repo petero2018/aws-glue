@@ -27,12 +27,25 @@ selected_environment="${selected_environment:-$TF_VAR_environment}"
 read -r -p "Project name [${TF_VAR_project_name}]: " selected_project_name
 selected_project_name="${selected_project_name:-$TF_VAR_project_name}"
 
+ACCOUNT_ID=""
+if ACCOUNT_ID=$(aws sts get-caller-identity \
+        --query Account --output text \
+        --profile "$selected_profile" --region "$selected_region" 2>/dev/null); then
+    echo "✓ Authenticated to AWS account $ACCOUNT_ID"
+else
+    echo "⚠️  AWS authentication could not be verified yet."
+    echo "   Configure '$selected_profile' in ~/.aws/config and ~/.aws/credentials,"
+    echo "   or run: aws sso login --profile '$selected_profile'"
+    echo "   The account ID will be populated automatically after authentication."
+fi
+
 LOCAL_CONFIG_FILE="$PROJECT_ROOT/.aws-glue.local"
 umask 077
 {
     echo "# Local project settings. Do not add credentials or secrets here."
     printf 'AWS_PROFILE=%q\n' "$selected_profile"
     printf 'AWS_REGION=%q\n' "$selected_region"
+    printf 'AWS_ACCOUNT_ID=%q\n' "$ACCOUNT_ID"
     printf 'TF_VAR_environment=%q\n' "$selected_environment"
     printf 'TF_VAR_project_name=%q\n' "$selected_project_name"
 } > "$LOCAL_CONFIG_FILE"
@@ -42,20 +55,15 @@ echo "✓ Saved project settings to $LOCAL_CONFIG_FILE"
 
 export AWS_PROFILE="$selected_profile"
 export AWS_REGION="$selected_region"
+export AWS_ACCOUNT_ID="$ACCOUNT_ID"
 export AWS_DEFAULT_REGION="$selected_region"
 export TF_VAR_environment="$selected_environment"
 export TF_VAR_project_name="$selected_project_name"
 export TF_VAR_enable_msk="${TF_VAR_enable_msk:-false}"
 export TF_VAR_aws_region="$selected_region"
 
-if ACCOUNT_ID=$(aws sts get-caller-identity \
-        --query Account --output text \
-        --profile "$AWS_PROFILE" --region "$AWS_REGION" 2>/dev/null); then
-    echo "✓ Authenticated to AWS account $ACCOUNT_ID"
+if [[ -n "$ACCOUNT_ID" ]]; then
     bash "$SCRIPTS_DIR/generate_backend.sh"
 else
-    echo "⚠️  AWS authentication could not be verified."
-    echo "   Configure '$AWS_PROFILE' in ~/.aws/config and ~/.aws/credentials,"
-    echo "   or run: aws sso login --profile '$AWS_PROFILE'"
     echo "   The project settings were saved; backend generation will happen on the next deploy."
 fi

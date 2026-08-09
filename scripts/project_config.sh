@@ -9,6 +9,7 @@ LOCAL_CONFIG_FILE="${PROJECT_ROOT}/.aws-glue.local"
 # Environment variables override project-local defaults (useful for CI).
 ENV_AWS_PROFILE="${AWS_PROFILE:-}"
 ENV_AWS_REGION="${AWS_REGION:-}"
+ENV_AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-}"
 ENVIRONMENT_OVERRIDE="${TF_VAR_environment:-}"
 PROJECT_NAME_OVERRIDE="${TF_VAR_project_name:-}"
 MSK_OVERRIDE="${TF_VAR_enable_msk:-}"
@@ -20,13 +21,14 @@ fi
 
 AWS_PROFILE="${ENV_AWS_PROFILE:-${AWS_PROFILE:-default}}"
 AWS_REGION="${ENV_AWS_REGION:-${AWS_REGION:-eu-west-2}}"
+AWS_ACCOUNT_ID="${ENV_AWS_ACCOUNT_ID:-${AWS_ACCOUNT_ID:-}}"
 TF_VAR_environment="${ENVIRONMENT_OVERRIDE:-${TF_VAR_environment:-development}}"
 TF_VAR_project_name="${PROJECT_NAME_OVERRIDE:-${TF_VAR_project_name:-glue-engineering}}"
 TF_VAR_enable_msk="${MSK_OVERRIDE:-${TF_VAR_enable_msk:-false}}"
 TF_VAR_aws_region="$AWS_REGION"
 
 AWS_DEFAULT_REGION="$AWS_REGION"
-export AWS_PROFILE AWS_REGION AWS_DEFAULT_REGION
+export AWS_PROFILE AWS_REGION AWS_ACCOUNT_ID AWS_DEFAULT_REGION
 export TF_VAR_environment TF_VAR_project_name TF_VAR_enable_msk TF_VAR_aws_region
 
 aws_account_id() {
@@ -44,6 +46,10 @@ require_aws_identity() {
         echo "❌ AWS authentication failed for profile '$AWS_PROFILE' in region '$AWS_REGION'." >&2
         echo "   Configure the profile in ~/.aws/config and ~/.aws/credentials (or run: aws sso login --profile '$AWS_PROFILE')." >&2
         return 1
+    fi
+
+    if [[ -n "${AWS_ACCOUNT_ID:-}" && "$AWS_ACCOUNT_ID" != "$account_id" ]]; then
+        echo "⚠️  Stored AWS account ID ($AWS_ACCOUNT_ID) differs from the authenticated account ($account_id); using the authenticated account." >&2
     fi
 
     echo "✓ AWS account: $account_id (profile: $AWS_PROFILE, region: $AWS_REGION)"
