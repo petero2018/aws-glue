@@ -33,9 +33,12 @@ show_menu() {
     echo ""
     echo "2) Deploy Infrastructure (Terraform)"
     echo "3) Upload Glue Scripts to S3"
-    echo "4) Redeploy (Update Infra + Code)"
     echo ""
-    echo -e "${RED}⚠️  DESTROY:${NC}"
+    echo -e "${BLUE}▶  PIPELINES:${NC}"
+    echo "6) Run Glue Pipelines (choose a job in the submenu)"
+    echo ""
+    echo -e "${RED}⚠️  OPERATIONS:${NC}"
+    echo "4) Redeploy (auto-apply infrastructure + upload code)"
     echo "5) Destroy All (Clean S3 + Remove Infrastructure)"
     echo ""
     echo "9) Exit"
@@ -62,6 +65,9 @@ case "$choice" in
         ;;
     5)
         bash "$SCRIPTS_DIR/destroy_infrastructure.sh"
+        ;;
+    6)
+        bash "$SCRIPTS_DIR/run_glue_job.sh"
         ;;
     9)
         echo -e "${GREEN}Goodbye!${NC}"

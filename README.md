@@ -69,6 +69,7 @@ Production-ready AWS Glue data engineering platform on AWS. Generates synthetic 
     ├── setup_aws.sh                # Configure local profile/region settings
     ├── project_config.sh           # Load gitignored project-local settings
     ├── generate_backend.sh         # Generate account-specific backend config
+    ├── run_glue_job.sh              # Start and monitor Glue pipelines
     ├── deploy_infrastructure.sh    # terraform init → apply → upload JARs → register catalog
     ├── redeploy.sh                 # Upload scripts + re-register catalog (no terraform)
     ├── destroy_infrastructure.sh   # Pre-cleanup + terraform destroy
@@ -142,7 +143,18 @@ This runs in sequence:
 
 Uploads updated Python files and re-registers the catalog (idempotent).
 
-### 6 — Destroy
+### 6 — Run Glue pipelines
+
+```bash
+./scripts/menu.sh   # option 6
+```
+
+The runner can start the Iceberg generator, the Parquet generator/crawler, the
+S3 Tables pipeline, or the full chain. The full chain waits for each Glue job
+to finish before starting the next one. The S3 Tables pipeline must run after
+the Iceberg generator because it reads the raw Iceberg tables.
+
+### Destroy (menu option 5)
 
 ```bash
 ./scripts/menu.sh   # option 5
