@@ -133,7 +133,21 @@ This runs in sequence:
 ./scripts/upload_glue_scripts.sh
 ```
 
-### 5 — Redeploy after code changes
+### 5 — Generate the Snowflake SQL
+
+After infrastructure deployment, use menu option `7` or run:
+
+```bash
+./scripts/render_snowflake_sql.sh
+```
+
+This renders the account-specific linked-database and governance SQL files
+under `snowflake/*.local.sql`. Execute those generated files only after the
+Iceberg pipeline has created the Glue tables. The complete AWS-to-Snowflake
+sequence, including the two manual IAM trust-policy updates, is documented in
+[docs/E2E_SETUP.md](docs/E2E_SETUP.md).
+
+### 6 — Redeploy after code changes
 
 ```bash
 ./scripts/menu.sh   # option 4
@@ -143,7 +157,7 @@ This runs in sequence:
 
 Uploads updated Python files and re-registers the catalog (idempotent).
 
-### 6 — Run Glue pipelines
+### 7 — Run Glue pipelines
 
 ```bash
 ./scripts/menu.sh   # option 6
@@ -235,6 +249,7 @@ SELECT * FROM "glue-engineering-development-tables"."engineering"."customers" LI
 | Doc | Covers |
 |---|---|
 | [docs/AWS_BOOTSTRAP.md](docs/AWS_BOOTSTRAP.md) | AWS account, IAM profile and Terraform deployment access setup |
+| [docs/E2E_SETUP.md](docs/E2E_SETUP.md) | Complete AWS menu flow, SQL generation, Snowflake setup and IAM trust updates |
 | [docs/PARQUET_PIPELINE.md](docs/PARQUET_PIPELINE.md) | Parquet job setup, `S3DataWriter`, Glue Crawler config, Athena integration |
 | [docs/ICEBERG_S3_PIPELINE.md](docs/ICEBERG_S3_PIPELINE.md) | Iceberg job setup, `BaseGlueJob`, `writeTo().createOrReplace()`, Athena time-travel |
 | [docs/S3_TABLES_PIPELINE.md](docs/S3_TABLES_PIPELINE.md) | S3 Table Bucket, S3TablesCatalog JAR, federated catalog, Lake Formation grants, Athena |

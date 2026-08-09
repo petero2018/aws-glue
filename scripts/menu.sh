@@ -37,6 +37,9 @@ show_menu() {
     echo -e "${BLUE}▶  PIPELINES:${NC}"
     echo "6) Run Glue Pipelines (choose a job in the submenu)"
     echo ""
+    echo -e "${BLUE}❄  SNOWFLAKE:${NC}"
+    echo "7) Generate Snowflake SQL (after infrastructure deployment)"
+    echo ""
     echo -e "${RED}⚠️  OPERATIONS:${NC}"
     echo "4) Redeploy (auto-apply infrastructure + upload code)"
     echo "5) Destroy All (Clean S3 + Remove Infrastructure)"
@@ -68,6 +71,9 @@ case "$choice" in
         ;;
     6)
         bash "$SCRIPTS_DIR/run_glue_job.sh"
+        ;;
+    7)
+        bash "$SCRIPTS_DIR/render_snowflake_sql.sh"
         ;;
     9)
         echo -e "${GREEN}Goodbye!${NC}"
