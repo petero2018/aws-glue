@@ -38,7 +38,7 @@ show_menu() {
     echo "6) Run Glue Pipelines (choose a job in the submenu)"
     echo ""
     echo -e "${BLUE}❄  SNOWFLAKE:${NC}"
-    echo "7) Generate Snowflake SQL (after infrastructure deployment)"
+    echo "7) Generate Snowflake SQL (setup + cleanup)"
     echo ""
     echo -e "${RED}⚠️  OPERATIONS:${NC}"
     echo "4) Redeploy (auto-apply infrastructure + upload code)"

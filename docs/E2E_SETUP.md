@@ -253,6 +253,33 @@ immediate table-level check.
 
 ## 5. Destroy/recreate warning
 
+### Snowflake cleanup
+
+Option `7` also renders:
+
+```text
+snowflake/destroy_glue_raw_iceberg.local.sql
+```
+
+This is the Snowflake-side equivalent of the AWS cleanup. It removes only the
+objects created by this repository:
+
+- the `GLUE_RAW_ICEBERG` linked database;
+- the `GLUE_RAW_ICEBERG_CATALOG_INT` catalog integration;
+- the `GLUE_RAW_ICEBERG_VOLUME` external volume;
+- the `GLUE_GOVERNANCE` database, tag and masking policies;
+- the `GLUE_RAW_ICEBERG_READER` and `GLUE_RAW_ICEBERG_PII_READER` roles.
+
+It does not drop Snowflake users, `COMPUTE_WH`, or unrelated databases. Review
+the `SHOW` results at the start of the file before executing the destructive
+statements. Dropping the roles revokes their grants, including grants made
+manually to users, but does not delete those users.
+
+The safest teardown order is:
+
+1. run the generated Snowflake cleanup SQL;
+2. run the AWS menu option `5` / `destroy_infrastructure.sh`.
+
 A full Terraform destroy removes the IAM roles and resets their manually
 configured trust policies. After recreating the infrastructure, repeat both
 trust-policy updates using the values in the existing or newly recreated
@@ -261,6 +288,22 @@ Snowflake objects, then rerun the external-volume and catalog-link checks.
 The Terraform S3 buckets use `force_destroy = true`; a full destroy can delete
 the Iceberg, Parquet and Athena-result data. Do not use the destroy flow as a
 low-cost pause mechanism unless the data is disposable or backed up.
+
+### Terraform lifecycle behavior
+
+The repository currently uses two different lifecycle mechanisms:
+
+- `lifecycle.ignore_changes = [assume_role_policy]` on the two Snowflake AWS
+  roles. This preserves the manually updated Snowflake trust policy during a
+  normal `terraform plan/apply`; it does not preserve the policy after the IAM
+  role itself is destroyed.
+- the Athena-results S3 lifecycle configuration expires old result objects
+  after 30 days. This is an AWS data-retention rule, not a Terraform protection
+  rule. It does not prevent `terraform destroy` from deleting the bucket.
+
+The S3 buckets also use `force_destroy = true`, and the AWS destroy script
+empties them before Terraform removes them. There is currently no
+`lifecycle.prevent_destroy` protection on these resources.
 
 For a low-cost pause, review the plan after setting `enable_vpc = false` and
 keep `enable_msk = false`. Confirm that only the intended networking resources

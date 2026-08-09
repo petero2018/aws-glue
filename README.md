@@ -141,9 +141,10 @@ After infrastructure deployment, use menu option `7` or run:
 ./scripts/render_snowflake_sql.sh
 ```
 
-This renders the account-specific linked-database and governance SQL files
-under `snowflake/*.local.sql`. Execute those generated files only after the
-Iceberg pipeline has created the Glue tables. The complete AWS-to-Snowflake
+This renders the account-specific linked-database, governance and cleanup SQL
+files under `snowflake/*.local.sql`. Execute the setup files only after the
+Iceberg pipeline has created the Glue tables. The cleanup file is destructive
+and should be used before the AWS destroy flow. The complete AWS-to-Snowflake
 sequence, including the two manual IAM trust-policy updates, is documented in
 [docs/E2E_SETUP.md](docs/E2E_SETUP.md).
 

@@ -61,6 +61,10 @@ render_template \
     "$PROJECT_ROOT/snowflake/setup_glue_raw_iceberg_roles_and_masking.sql" \
     "$PROJECT_ROOT/snowflake/setup_glue_raw_iceberg_roles_and_masking.local.sql"
 
+render_template \
+    "$PROJECT_ROOT/snowflake/destroy_glue_raw_iceberg.sql" \
+    "$PROJECT_ROOT/snowflake/destroy_glue_raw_iceberg.local.sql"
+
 echo "  AWS account: $AWS_ACCOUNT_ID"
 echo "  S3 bucket: $S3_BUCKET"
 echo "  Glue database: $GLUE_ICEBERG_DATABASE"
