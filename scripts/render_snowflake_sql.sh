@@ -11,14 +11,7 @@ source "$SCRIPTS_DIR/project_config.sh"
 
 require_aws_identity
 
-TEMPLATE="$PROJECT_ROOT/snowflake/raw_iceberg_linked_database.sql"
-OUTPUT="$PROJECT_ROOT/snowflake/raw_iceberg_linked_database.local.sql"
 INFRA_DIR="$PROJECT_ROOT/infra"
-
-if [[ ! -f "$TEMPLATE" ]]; then
-    echo "❌ Snowflake SQL template not found: $TEMPLATE" >&2
-    exit 1
-fi
 
 if [[ ! -d "$INFRA_DIR/.terraform" ]]; then
     echo "❌ Terraform has not been initialized in $INFRA_DIR." >&2
@@ -38,17 +31,36 @@ SNOWFLAKE_CATALOG_ROLE_ARN="$(terraform_output snowflake_raw_iceberg_catalog_rol
 export AWS_ACCOUNT_ID AWS_REGION S3_BUCKET GLUE_ICEBERG_DATABASE
 export SNOWFLAKE_S3_ROLE_ARN SNOWFLAKE_CATALOG_ROLE_ARN
 
-perl -pe '
-    s/\{\{AWS_ACCOUNT_ID\}\}/$ENV{AWS_ACCOUNT_ID}/g;
-    s/\{\{AWS_REGION\}\}/$ENV{AWS_REGION}/g;
-    s/\{\{S3_BUCKET\}\}/$ENV{S3_BUCKET}/g;
-    s/\{\{GLUE_ICEBERG_DATABASE\}\}/$ENV{GLUE_ICEBERG_DATABASE}/g;
-    s/\{\{SNOWFLAKE_S3_ROLE_ARN\}\}/$ENV{SNOWFLAKE_S3_ROLE_ARN}/g;
-    s/\{\{SNOWFLAKE_CATALOG_ROLE_ARN\}\}/$ENV{SNOWFLAKE_CATALOG_ROLE_ARN}/g;
-' "$TEMPLATE" > "$OUTPUT"
+render_template() {
+    local template="$1"
+    local output="$2"
 
-chmod 600 "$OUTPUT"
-echo "✓ Rendered Snowflake SQL: $OUTPUT"
+    if [[ ! -f "$template" ]]; then
+        echo "❌ Snowflake SQL template not found: $template" >&2
+        exit 1
+    fi
+
+    perl -pe '
+        s/\{\{AWS_ACCOUNT_ID\}\}/$ENV{AWS_ACCOUNT_ID}/g;
+        s/\{\{AWS_REGION\}\}/$ENV{AWS_REGION}/g;
+        s/\{\{S3_BUCKET\}\}/$ENV{S3_BUCKET}/g;
+        s/\{\{GLUE_ICEBERG_DATABASE\}\}/$ENV{GLUE_ICEBERG_DATABASE}/g;
+        s/\{\{SNOWFLAKE_S3_ROLE_ARN\}\}/$ENV{SNOWFLAKE_S3_ROLE_ARN}/g;
+        s/\{\{SNOWFLAKE_CATALOG_ROLE_ARN\}\}/$ENV{SNOWFLAKE_CATALOG_ROLE_ARN}/g;
+    ' "$template" > "$output"
+
+    chmod 600 "$output"
+    echo "✓ Rendered Snowflake SQL: $output"
+}
+
+render_template \
+    "$PROJECT_ROOT/snowflake/raw_iceberg_linked_database.sql" \
+    "$PROJECT_ROOT/snowflake/raw_iceberg_linked_database.local.sql"
+
+render_template \
+    "$PROJECT_ROOT/snowflake/setup_glue_raw_iceberg_roles_and_masking.sql" \
+    "$PROJECT_ROOT/snowflake/setup_glue_raw_iceberg_roles_and_masking.local.sql"
+
 echo "  AWS account: $AWS_ACCOUNT_ID"
 echo "  S3 bucket: $S3_BUCKET"
 echo "  Glue database: $GLUE_ICEBERG_DATABASE"

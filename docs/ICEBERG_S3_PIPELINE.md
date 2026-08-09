@@ -155,9 +155,11 @@ All columns are non-nullable. Iceberg stores the schema in its own metadata — 
 
 The customer PII-shaped fields are synthetic test data only. Addresses are
 generic, emails use `example.com`, and `national_id` values intentionally use
-the `FAKE-NID-` prefix. Their Iceberg/Glue Catalog column descriptions are set
-to `PII=PII`; `orders.customer_id` is marked as PII because it links back to a
-customer record.
+the `FAKE-NID-` prefix. The `PII=PII` marker is applied only to the
+linkable/direct customer fields (`customer_id`, names, email, phone, date of
+birth, address, postal code, national ID, city and country). `signup_date` and
+`customer_segment` are not marked. `orders.customer_id` is marked because it
+links back to a customer record.
 
 ---
 

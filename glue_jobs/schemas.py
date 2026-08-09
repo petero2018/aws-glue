@@ -10,6 +10,11 @@ from pyspark.sql.types import (
 
 PII_COMMENT = "PII=PII"
 
+
+def pii_metadata():
+    """Return the column metadata used to mark synthetic PII fields."""
+    return {"comment": PII_COMMENT}
+
 # Organization schema
 ORGANIZATION_SCHEMA = StructType([
     StructField("org_id", IntegerType(), False),
@@ -33,25 +38,26 @@ PRODUCT_SCHEMA = StructType([
 # PII-shaped fields are synthetic test data only. The national_id values use
 # a FAKE- prefix deliberately so they cannot be mistaken for real IDs.
 CUSTOMER_SCHEMA = StructType([
-    StructField("customer_id", IntegerType(), False, {"comment": PII_COMMENT}),
-    StructField("first_name", StringType(), False, {"comment": PII_COMMENT}),
-    StructField("last_name", StringType(), False, {"comment": PII_COMMENT}),
-    StructField("email", StringType(), False, {"comment": PII_COMMENT}),
-    StructField("phone", StringType(), False, {"comment": PII_COMMENT}),
-    StructField("date_of_birth", DateType(), False, {"comment": PII_COMMENT}),
-    StructField("address_line1", StringType(), False, {"comment": PII_COMMENT}),
-    StructField("postal_code", StringType(), False, {"comment": PII_COMMENT}),
-    StructField("national_id", StringType(), False, {"comment": PII_COMMENT}),
-    StructField("city", StringType(), False, {"comment": PII_COMMENT}),
-    StructField("country", StringType(), False, {"comment": PII_COMMENT}),
-    StructField("signup_date", DateType(), False, {"comment": PII_COMMENT}),
-    StructField("customer_segment", StringType(), False, {"comment": PII_COMMENT}),
+    StructField("customer_id", IntegerType(), False, pii_metadata()),
+    StructField("first_name", StringType(), False, pii_metadata()),
+    StructField("last_name", StringType(), False, pii_metadata()),
+    StructField("email", StringType(), False, pii_metadata()),
+    StructField("phone", StringType(), False, pii_metadata()),
+    StructField("date_of_birth", DateType(), False, pii_metadata()),
+    StructField("address_line1", StringType(), False, pii_metadata()),
+    StructField("postal_code", StringType(), False, pii_metadata()),
+    StructField("national_id", StringType(), False, pii_metadata()),
+    StructField("city", StringType(), False, pii_metadata()),
+    StructField("country", StringType(), False, pii_metadata()),
+    StructField("signup_date", DateType(), False),
+    StructField("customer_segment", StringType(), False),
 ])
 
 # Order schema
 ORDER_SCHEMA = StructType([
     StructField("order_id", IntegerType(), False),
-    StructField("customer_id", IntegerType(), False, {"comment": PII_COMMENT}),
+    # This linkable customer identifier is treated as PII in the order table.
+    StructField("customer_id", IntegerType(), False, pii_metadata()),
     StructField("org_id", IntegerType(), False),
     StructField("order_date", DateType(), False),
     StructField("total_amount", DoubleType(), False),

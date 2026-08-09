@@ -28,6 +28,9 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "glue_data_bucket_
   bucket = aws_s3_bucket.glue_data_bucket.id
 
   rule {
+    blocked_encryption_types = ["SSE-C"]
+    bucket_key_enabled       = false
+
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
     }
@@ -81,6 +84,9 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "athena_results_ss
   bucket = aws_s3_bucket.athena_results.id
 
   rule {
+    blocked_encryption_types = ["SSE-C"]
+    bucket_key_enabled       = false
+
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
     }

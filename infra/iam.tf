@@ -78,21 +78,16 @@ resource "aws_iam_role_policy" "snowflake_raw_iceberg_s3_read" {
           "s3:GetObject",
           "s3:GetObjectVersion"
         ]
-        Resource = "${aws_s3_bucket.glue_data_bucket.arn}/raw-iceberg/*"
+        Resource = "${aws_s3_bucket.glue_data_bucket.arn}/*"
       },
       {
-        Sid    = "ListRawIcebergPrefix"
+        Sid    = "ListGlueDataBucket"
         Effect = "Allow"
         Action = [
           "s3:GetBucketLocation",
           "s3:ListBucket"
         ]
         Resource = aws_s3_bucket.glue_data_bucket.arn
-        Condition = {
-          StringLike = {
-            "s3:prefix" = ["raw-iceberg", "raw-iceberg/*"]
-          }
-        }
       }
     ]
   })
@@ -153,6 +148,24 @@ resource "aws_iam_role_policy" "snowflake_raw_iceberg_catalog_read" {
           "arn:aws:glue:${local.current_region}:${local.current_account_id}:database/${local.glue_iceberg_database_name}",
           "arn:aws:glue:${local.current_region}:${local.current_account_id}:table/${local.glue_iceberg_database_name}/*"
         ]
+      },
+      {
+        Sid    = "ReadRawIcebergMetadataFromS3"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:GetObjectVersion"
+        ]
+        Resource = "${aws_s3_bucket.glue_data_bucket.arn}/*"
+      },
+      {
+        Sid    = "ListGlueDataBucket"
+        Effect = "Allow"
+        Action = [
+          "s3:GetBucketLocation",
+          "s3:ListBucket"
+        ]
+        Resource = aws_s3_bucket.glue_data_bucket.arn
       },
       {
         Sid      = "LakeFormationDataAccessIfEnabled"
