@@ -6,11 +6,15 @@
 
 set -e
 
-# Configuration
-PROFILE="king008"
-REGION="eu-west-2"
-INFRA_DIR="infra"
-ACCOUNT_ID="613261654184"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPTS_DIR/.." && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/project_config.sh"
+require_aws_identity
+PROFILE="$AWS_PROFILE"
+REGION="$AWS_REGION"
+INFRA_DIR="$PROJECT_ROOT/infra"
+ACCOUNT_ID="$AWS_ACCOUNT_ID"
 BUCKET_NAME="aws-glue-terraform-state-${ACCOUNT_ID}"
 
 # Color codes
@@ -86,11 +90,11 @@ echo ""
 echo -e "${YELLOW}[4/5] Initializing Terraform with S3 backend...${NC}"
 cd "$INFRA_DIR"
 
-# Clean up old terraform files
-rm -rf .terraform
-
-# Initialize with backend
-terraform init -upgrade
+# Generate and initialize with the account-specific backend.
+cd "$PROJECT_ROOT"
+bash "$SCRIPTS_DIR/generate_backend.sh"
+cd "$INFRA_DIR"
+terraform init -reconfigure -upgrade -backend-config=backend.local.hcl
 
 echo -e "${GREEN}✓ Terraform initialized with S3 backend${NC}"
 echo ""

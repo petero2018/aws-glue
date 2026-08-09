@@ -6,8 +6,9 @@
 # It should be run ONCE and then NEVER touched by the main infrastructure destroy.
 #
 # Setup:
-# 1. From project root: ./scripts/bootstrap_state.sh
-#    (or manually: cd state_bootstrap && terraform init && terraform apply)
+# 1. From project root: ./scripts/menu.sh -> 0) Setup AWS, then
+#    ./scripts/menu.sh -> 1) Bootstrap State Backend
+#    (or manually: source scripts/project_config.sh && cd state_bootstrap && terraform init && terraform apply)
 #
 # The state backend will be created and ready for the main infrastructure.
 # The main infrastructure (./infra) will use this state backend via backend.tf

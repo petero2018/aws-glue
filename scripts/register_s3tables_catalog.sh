@@ -25,9 +25,14 @@
 
 set -euo pipefail
 
-PROFILE="${AWS_PROFILE:-king008}"
-REGION="${AWS_REGION:-eu-west-2}"
-ACCOUNT_ID="${AWS_ACCOUNT_ID:-613261654184}"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/project_config.sh"
+
+require_aws_identity
+PROFILE="$AWS_PROFILE"
+REGION="$AWS_REGION"
+ACCOUNT_ID="$AWS_ACCOUNT_ID"
 ENVIRONMENT="${TF_VAR_environment:-development}"
 
 BUCKET_NAME="glue-engineering-${ENVIRONMENT}-tables"

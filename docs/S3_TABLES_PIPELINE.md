@@ -326,7 +326,7 @@ Caused by missing Lake Formation table-level grants. Verify with:
 
 ```bash
 aws lakeformation list-permissions --resource-type TABLE \
-  --profile king008 --region eu-west-2 \
+  --profile "$AWS_PROFILE" --region "$AWS_REGION" \
   | python3 -c "
 import sys, json
 for p in json.load(sys.stdin)['PrincipalResourcePermissions']:
@@ -345,7 +345,7 @@ The database-level `DESCRIBE` grant is missing. Re-run `register_s3tables_catalo
 
 The JAR was not uploaded or is the wrong artifact. Check:
 ```bash
-aws s3 ls s3://<bucket>/glue-scripts/jars/ --profile king008 --region eu-west-2
+aws s3 ls s3://<bucket>/glue-scripts/jars/ --profile "$AWS_PROFILE" --region "$AWS_REGION"
 ```
 The file should be ~40 MB. If it is a few hundred bytes, the upload script downloaded an error page (wrong classifier). Re-run `scripts/upload_jars.sh`.
 
@@ -360,6 +360,6 @@ for TABLE in customers order_items orders organizations products; do
     --table-bucket-arn "$TABLE_BUCKET_ARN" \
     --namespace engineering \
     --name "$TABLE" \
-    --profile king008 --region eu-west-2
+    --profile "$AWS_PROFILE" --region "$AWS_REGION"
 done
 ```

@@ -239,6 +239,10 @@ terraform.rc
 *.tfplan
 *tfplan*
 
+# Project-local AWS preferences and generated account-specific backend config
+.aws-glue.local
+infra/backend.local.hcl
+
 # Ignore lock files (optional - recommended to commit in team environments)
 # .terraform.lock.hcl
 infra/terraform.tfvars.example

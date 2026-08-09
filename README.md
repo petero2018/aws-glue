@@ -66,6 +66,9 @@ Production-ready AWS Glue data engineering platform on AWS. Generates synthetic 
 │
 └── scripts/                        # Deployment & operations
     ├── menu.sh                     # Interactive menu (start here)
+    ├── setup_aws.sh                # Configure local profile/region settings
+    ├── project_config.sh           # Load gitignored project-local settings
+    ├── generate_backend.sh         # Generate account-specific backend config
     ├── deploy_infrastructure.sh    # terraform init → apply → upload JARs → register catalog
     ├── redeploy.sh                 # Upload scripts + re-register catalog (no terraform)
     ├── destroy_infrastructure.sh   # Pre-cleanup + terraform destroy
@@ -82,24 +85,35 @@ Production-ready AWS Glue data engineering platform on AWS. Generates synthetic 
 
 ### Prerequisites
 
-- AWS CLI configured with a named profile (`king008` by default — edit scripts to change)
+- AWS CLI configured with a profile in `~/.aws/config` and `~/.aws/credentials` (or AWS SSO)
 - Terraform ≥ 1.5
 - `jq` (optional, for pretty deployment summary output)
 
-### 1 — Bootstrap remote state (one-time)
+### 1 — Configure AWS for this project
 
 ```bash
 ./scripts/menu.sh   # option 0
+```
+
+This stores only the AWS CLI profile, region and project preferences in the
+gitignored `.aws-glue.local` file. Access keys, SSO tokens and other secrets
+remain in the normal AWS CLI configuration. The account ID is resolved from
+the selected profile at runtime.
+
+### 2 — Bootstrap remote state (one-time)
+
+```bash
+./scripts/menu.sh   # option 1
 # or directly:
 ./scripts/bootstrap_state.sh
 ```
 
 Creates an S3 bucket and DynamoDB table for Terraform remote state.
 
-### 2 — Deploy
+### 3 — Deploy
 
 ```bash
-./scripts/menu.sh   # option 1
+./scripts/menu.sh   # option 2
 # or directly:
 ./scripts/deploy_infrastructure.sh
 ```
@@ -110,28 +124,28 @@ This runs in sequence:
 3. Register the S3 Table Bucket as a Glue federated catalog
 4. Grant Lake Formation permissions to the Athena service role
 
-### 3 — Upload / update scripts
+### 4 — Upload / update scripts
 
 ```bash
-./scripts/menu.sh   # option 2
+./scripts/menu.sh   # option 3
 # or directly:
 ./scripts/upload_glue_scripts.sh
 ```
 
-### 4 — Redeploy after code changes
+### 5 — Redeploy after code changes
 
 ```bash
-./scripts/menu.sh   # option 3
+./scripts/menu.sh   # option 4
 # or directly:
 ./scripts/redeploy.sh
 ```
 
 Uploads updated Python files and re-registers the catalog (idempotent).
 
-### 5 — Destroy
+### 6 — Destroy
 
 ```bash
-./scripts/menu.sh   # option 4
+./scripts/menu.sh   # option 5
 # or directly:
 ./scripts/destroy_infrastructure.sh
 ```
@@ -147,6 +161,12 @@ The destroy script handles all pre-cleanup before `terraform destroy`:
 
 ## Running the Glue Jobs
 
+For CLI commands below, first load the project-local settings:
+
+```bash
+source scripts/project_config.sh
+```
+
 ### Iceberg + Parquet (sample data generator)
 
 Writes 5 tables to both `raw-iceberg/` (Iceberg, registered in Glue Catalog) and `raw-parquet/` (Parquet files, crawled by the Parquet crawler).
@@ -155,7 +175,7 @@ Run from the AWS Glue console or CLI:
 ```bash
 aws glue start-job-run \
   --job-name "glue-engineering-development-sample-data-generator" \
-  --profile king008 --region eu-west-2
+  --profile "$AWS_PROFILE" --region "$AWS_REGION"
 ```
 
 After the Parquet job completes, the crawler runs automatically to register the Parquet tables in `raw_parquet_development`.
@@ -167,7 +187,7 @@ Reads from `raw-iceberg/` (Glue Catalog) and engineers curated Iceberg tables in
 ```bash
 aws glue start-job-run \
   --job-name "glue-engineering-development-s3tables-pipeline" \
-  --profile king008 --region eu-west-2
+  --profile "$AWS_PROFILE" --region "$AWS_REGION"
 ```
 
 Requires Glue 5.0 and the `s3-tables-catalog-for-iceberg-0.1.8-all.jar` (uploaded by `upload_jars.sh`).
@@ -202,6 +222,7 @@ SELECT * FROM "glue-engineering-development-tables"."engineering"."customers" LI
 
 | Doc | Covers |
 |---|---|
+| [docs/AWS_BOOTSTRAP.md](docs/AWS_BOOTSTRAP.md) | AWS account, IAM profile and Terraform deployment access setup |
 | [docs/PARQUET_PIPELINE.md](docs/PARQUET_PIPELINE.md) | Parquet job setup, `S3DataWriter`, Glue Crawler config, Athena integration |
 | [docs/ICEBERG_S3_PIPELINE.md](docs/ICEBERG_S3_PIPELINE.md) | Iceberg job setup, `BaseGlueJob`, `writeTo().createOrReplace()`, Athena time-travel |
 | [docs/S3_TABLES_PIPELINE.md](docs/S3_TABLES_PIPELINE.md) | S3 Table Bucket, S3TablesCatalog JAR, federated catalog, Lake Formation grants, Athena |
@@ -235,7 +256,7 @@ Account root is set as LF data lake admin with `IAM_ALLOWED_PRINCIPALS` defaults
 
 | Variable | Default | Description |
 |---|---|---|
-| `aws_region` | `eu-west-2` | AWS region |
+| `aws_region` | `eu-west-2` | AWS region, configured through `.aws-glue.local` |
 | `environment` | `development` | `development` / `staging` / `production` |
 | `project_name` | `glue-engineering` | Resource name prefix |
 | `cost_center` | `data-engineering` | Billing tag |

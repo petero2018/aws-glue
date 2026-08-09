@@ -5,9 +5,12 @@
 
 set -e
 
-# Configuration
-PROFILE="king008"
-REGION="eu-west-2"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/project_config.sh"
+require_aws_identity
+PROFILE="$AWS_PROFILE"
+REGION="$AWS_REGION"
 
 # Color codes
 RED='\033[0;31m'
@@ -20,7 +23,7 @@ echo -e "${RED}⚠️  S3 BUCKET CLEANUP${NC}"
 echo ""
 
 # Get Account ID
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile ${PROFILE} --region ${REGION})
+ACCOUNT_ID="$AWS_ACCOUNT_ID"
 S3_BUCKET="glue-engineering-${ACCOUNT_ID}"
 
 echo "S3 Bucket: $S3_BUCKET"

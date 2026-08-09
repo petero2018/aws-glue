@@ -6,9 +6,13 @@
 
 set -e
 
-PROFILE="king008"
-REGION="eu-west-2"
-BOOTSTRAP_DIR="state_bootstrap"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPTS_DIR/.." && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/project_config.sh"
+BOOTSTRAP_DIR="$PROJECT_ROOT/state_bootstrap"
+
+require_aws_identity
 
 # Color codes
 GREEN='\033[0;32m'
@@ -43,7 +47,7 @@ echo -e "${YELLOW}Applying state backend configuration...${NC}"
 terraform apply -auto-approve
 
 echo ""
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile $PROFILE)
+ACCOUNT_ID="$AWS_ACCOUNT_ID"
 echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║  ✓ State backend created successfully                      ║${NC}"
 echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"
@@ -61,3 +65,7 @@ echo "  3. terraform plan"
 echo ""
 
 cd - > /dev/null
+
+echo ""
+echo "Generating account-specific main Terraform backend configuration..."
+bash "$SCRIPTS_DIR/generate_backend.sh"

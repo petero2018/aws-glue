@@ -8,7 +8,7 @@ variable "environment" {
   type        = string
   description = "Environment name (development, staging, production)"
   default     = "development"
-  
+
   validation {
     condition     = contains(["development", "staging", "production"], var.environment)
     error_message = "Environment must be development, staging, or production."
@@ -30,7 +30,7 @@ variable "cost_center" {
 variable "owner_email" {
   type        = string
   description = "Email address for notifications and ownership"
-  default     = "awsking008@proton.me"
+  default     = "your-email@example.com"
 }
 
 variable "enable_vpc" {
@@ -49,7 +49,7 @@ variable "cloudwatch_log_retention_days" {
   type        = number
   description = "CloudWatch log retention in days"
   default     = 7
-  
+
   validation {
     condition     = var.cloudwatch_log_retention_days >= 1 && var.cloudwatch_log_retention_days <= 3653
     error_message = "Log retention must be between 1 and 3653 days."
@@ -59,7 +59,7 @@ variable "cloudwatch_log_retention_days" {
 variable "sqs_message_retention_seconds" {
   type        = number
   description = "SQS message retention in seconds"
-  default     = 345600  # 4 days
+  default     = 345600 # 4 days
 
   validation {
     condition     = var.sqs_message_retention_seconds >= 60 && var.sqs_message_retention_seconds <= 1209600

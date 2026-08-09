@@ -5,9 +5,14 @@
 
 set -e  # Exit on error
 
-# Configuration
-PROFILE="king008"
-INFRA_DIR="infra"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPTS_DIR/.." && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/project_config.sh"
+INFRA_DIR="$PROJECT_ROOT/infra"
+
+require_aws_identity
+bash "$SCRIPTS_DIR/generate_backend.sh"
 
 echo "🚀 AWS Glue Infrastructure Deployment"
 echo "======================================"
@@ -19,11 +24,11 @@ if [ ! -d "$INFRA_DIR" ]; then
     exit 1
 fi
 
-cd $INFRA_DIR
+cd "$INFRA_DIR"
 
 # Step 1: Initialize Terraform
 echo "1️⃣  Initializing Terraform..."
-terraform init
+terraform init -reconfigure -backend-config=backend.local.hcl
 echo "✓ Terraform initialized"
 echo ""
 
@@ -55,20 +60,20 @@ echo ""
 echo "✅ Infrastructure deployed successfully!"
 echo ""
 
-cd ..
+cd "$PROJECT_ROOT"
 
 # Step 6: Upload JARs to S3
 echo "6️⃣  Uploading Glue JARs..."
-bash scripts/upload_jars.sh
+bash "$SCRIPTS_DIR/upload_jars.sh"
 echo ""
 
 # Step 7: Register S3 Table Bucket as Glue federated catalog (for Athena)
 echo "7️⃣  Registering S3 Tables federated catalog..."
-bash scripts/register_s3tables_catalog.sh
+bash "$SCRIPTS_DIR/register_s3tables_catalog.sh"
 echo ""
 
 # Display outputs
 echo "📋 Deployment Summary:"
 echo "====================="
-cd infra && terraform output -json | jq '.' 2>/dev/null || terraform output
-cd ..
+cd "$INFRA_DIR" && terraform output -json | jq '.' 2>/dev/null || terraform output
+cd "$PROJECT_ROOT"

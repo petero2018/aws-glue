@@ -5,14 +5,16 @@
 
 set -e  # Exit on error
 
-# Configuration
-PROFILE="king008"
-REGION="eu-west-2"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPTS_DIR/.." && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/project_config.sh"
 EXCLUDE_PATTERN="README.md"
 
 # Get AWS Account ID
 echo "🔍 Fetching AWS Account ID..."
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile ${PROFILE} --region ${REGION})
+require_aws_identity
+ACCOUNT_ID="$AWS_ACCOUNT_ID"
 
 if [ -z "$ACCOUNT_ID" ]; then
     echo "❌ Error: Could not retrieve Account ID. Check your AWS credentials."
@@ -29,14 +31,14 @@ echo "📦 Uploading Glue scripts to: $S3_PATH"
 echo ""
 
 # Upload files
-aws s3 cp glue_jobs/ $S3_PATH \
+aws s3 cp "$PROJECT_ROOT/glue_jobs/" "$S3_PATH" \
     --recursive \
     --exclude "$EXCLUDE_PATTERN" \
-    --profile $PROFILE \
-    --region $REGION
+    --profile "$AWS_PROFILE" \
+    --region "$AWS_REGION"
 
 echo ""
 echo "✅ Upload complete!"
 echo ""
 echo "📋 Files uploaded:"
-aws s3 ls $S3_PATH --recursive --profile $PROFILE --region $REGION | awk '{print "   " $4}'
+aws s3 ls "$S3_PATH" --recursive --profile "$AWS_PROFILE" --region "$AWS_REGION" | awk '{print "   " $4}'

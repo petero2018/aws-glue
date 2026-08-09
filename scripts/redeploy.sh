@@ -6,10 +6,14 @@
 
 set -e
 
-# Configuration
-PROFILE="king008"
-REGION="eu-west-2"
-INFRA_DIR="infra"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPTS_DIR/.." && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/project_config.sh"
+INFRA_DIR="$PROJECT_ROOT/infra"
+
+require_aws_identity
+bash "$SCRIPTS_DIR/generate_backend.sh"
 
 # Color codes
 GREEN='\033[0;32m'
@@ -23,29 +27,30 @@ echo ""
 
 # Step 1: Validate Terraform
 echo -e "${YELLOW}[1/3] Validating Terraform configuration...${NC}"
-cd $INFRA_DIR
+cd "$INFRA_DIR"
+terraform init -reconfigure -backend-config=backend.local.hcl
 terraform validate
-cd ..
+cd "$PROJECT_ROOT"
 echo -e "${GREEN}✓ Terraform validation passed${NC}"
 echo ""
 
 # Step 2: Apply Terraform changes
 echo -e "${YELLOW}[2/3] Applying Terraform changes...${NC}"
-cd $INFRA_DIR
+cd "$INFRA_DIR"
 terraform apply -auto-approve
-cd ..
+cd "$PROJECT_ROOT"
 echo -e "${GREEN}✓ Infrastructure updated${NC}"
 echo ""
 
 # Step 3: Upload updated scripts to S3
 echo -e "${YELLOW}[3/4] Uploading updated Python scripts to S3...${NC}"
-./scripts/upload_glue_scripts.sh
+bash "$SCRIPTS_DIR/upload_glue_scripts.sh"
 echo -e "${GREEN}✓ Code uploaded${NC}"
 echo ""
 
 # Step 4: Register S3 Tables federated catalog (idempotent — safe to re-run)
 echo -e "${YELLOW}[4/4] Registering S3 Tables federated catalog...${NC}"
-./scripts/register_s3tables_catalog.sh
+bash "$SCRIPTS_DIR/register_s3tables_catalog.sh"
 echo -e "${GREEN}✓ S3 Tables catalog registered${NC}"
 echo ""
 

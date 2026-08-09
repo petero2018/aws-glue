@@ -6,9 +6,13 @@
 
 set -e
 
-# Configuration
-PROFILE="king008"
-INFRA_DIR="infra"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPTS_DIR/.." && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/project_config.sh"
+PROFILE="$AWS_PROFILE"
+INFRA_DIR="$PROJECT_ROOT/infra"
+require_aws_identity
 
 # Color codes
 RED='\033[0;31m'
@@ -58,9 +62,9 @@ if [ ! -d "$INFRA_DIR" ]; then
     exit 1
 fi
 
-REGION="eu-west-2"
+REGION="$AWS_REGION"
 ENVIRONMENT="${TF_VAR_environment:-development}"
-ACCOUNT_ID=$(aws sts get-caller-identity --profile "$PROFILE" --query Account --output text 2>/dev/null || echo "613261654184")
+ACCOUNT_ID="$AWS_ACCOUNT_ID"
 BUCKET_NAME="glue-engineering-${ACCOUNT_ID}"
 TABLE_BUCKET_NAME="glue-engineering-${ENVIRONMENT}-tables"
 TABLE_BUCKET_ARN="arn:aws:s3tables:${REGION}:${ACCOUNT_ID}:bucket/${TABLE_BUCKET_NAME}"
@@ -171,7 +175,7 @@ for TF_WG in aws_athena_workgroup.glue_engineering aws_athena_workgroup.primary;
         && echo "  ✓ Removed $TF_WG from state." \
         || echo "  $TF_WG already absent from state, skipping."
 done
-cd ..
+cd "$PROJECT_ROOT"
 echo ""
 
 # -------------------------------------------------------------------------

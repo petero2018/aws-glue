@@ -19,11 +19,13 @@
 
 set -euo pipefail
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-PROFILE="${AWS_PROFILE:-king008}"
-REGION="${AWS_REGION:-eu-west-2}"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/project_config.sh"
+
+require_aws_identity
+PROFILE="$AWS_PROFILE"
+REGION="$AWS_REGION"
 
 # JAR versions — bump here to upgrade, CI/CD will pick up the change
 S3TABLES_JAR_VERSION="0.1.8"

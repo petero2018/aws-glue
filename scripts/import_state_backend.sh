@@ -5,9 +5,14 @@
 
 set -e
 
-PROFILE="king008"
-REGION="eu-west-2"
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text --profile $PROFILE --region $REGION)
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPTS_DIR/.." && pwd)"
+# shellcheck disable=SC1091
+source "$SCRIPTS_DIR/project_config.sh"
+require_aws_identity
+PROFILE="$AWS_PROFILE"
+REGION="$AWS_REGION"
+ACCOUNT_ID="$AWS_ACCOUNT_ID"
 BUCKET_NAME="aws-glue-terraform-state-${ACCOUNT_ID}"
 TABLE_NAME="terraform-locks-glue-engineering-development"
 
@@ -18,7 +23,7 @@ echo "Bucket: $BUCKET_NAME"
 echo "Table: $TABLE_NAME"
 echo ""
 
-cd "$(dirname "$0")/../state_bootstrap"
+cd "$PROJECT_ROOT/state_bootstrap"
 
 # Import S3 bucket
 echo "Importing S3 bucket..."

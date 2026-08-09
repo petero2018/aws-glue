@@ -1,11 +1,7 @@
 # Terraform Backend Configuration
-# Remote state stored in S3 with DynamoDB locking
+# Remote state is configured at runtime by scripts/generate_backend.sh.
+# The generated backend.local.hcl is account-specific and gitignored.
 
 terraform {
-  backend "s3" {
-    bucket         = "aws-glue-terraform-state-613261654184"
-    key            = "terraform.tfstate"
-    region         = "eu-west-2"
-    encrypt        = true
-  }
+  backend "s3" {}
 }
