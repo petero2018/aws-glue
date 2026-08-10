@@ -126,6 +126,11 @@ snowflake/raw_iceberg_linked_database.local.sql
 Run it in logical sections. The file deliberately pauses at the two `DESC`
 statements because their output is required in AWS IAM.
 
+> Important: SQL comments do not pause Snowflake execution. Do not select and
+> run the entire `.local.sql` file in one go. Run each section separately and
+> stop after every `DESC` statement. The returned values must be copied into
+> AWS IAM before continuing.
+
 ### 2.1 Create the external volume
 
 Run section `1` through:
@@ -162,6 +167,10 @@ Update the trust relationship of the generated S3 role with those values:
 }
 ```
 
+Use the returned IAM user directly as `Principal.AWS`. Do not use the AWS
+account root and do not add an `aws:PrincipalArn` condition when using the
+direct user principal.
+
 Use the role ARN printed in the generated SQL. Do not use the catalog role and
 do not use the `GLUE_AWS_*` values for this role.
 
@@ -194,6 +203,10 @@ For an AWS Glue Iceberg REST integration, the generated query extracts:
 Update the trust relationship of the generated Glue catalog role with these
 values. This is a different AWS role from the external-volume role.
 
+Use the returned `GLUE_AWS_IAM_USER_ARN` directly as `Principal.AWS`. Do not
+use the AWS account root, the S3 role's `STORAGE_AWS_*` values, or the
+`SNOWFLAKE_TRUST_NOT_CONFIGURED` placeholders.
+
 Do not reuse the `STORAGE_AWS_*` values. Do not use the AWS account root as the
 Snowflake principal. Terraform already attaches the Glue catalog and S3 read
 policies to this role.
@@ -222,10 +235,21 @@ Verify the link:
 SELECT SYSTEM$GET_CATALOG_LINKED_DATABASE_CONFIG('GLUE_RAW_ICEBERG');
 SELECT SYSTEM$CATALOG_LINK_STATUS('GLUE_RAW_ICEBERG');
 SHOW SCHEMAS IN DATABASE GLUE_RAW_ICEBERG;
+SHOW TABLES IN SCHEMA GLUE_RAW_ICEBERG."raw_iceberg_development";
 ```
 
-Wait for the catalog link to become healthy and for
-`raw_iceberg_development` and its tables to appear before continuing.
+`executionState = RUNNING` means that discovery is scheduled or in progress;
+it does not guarantee that every table is visible yet. Wait for the next sync
+and refresh the database explorer. If the schema remains empty, force a new
+discovery run:
+
+```sql
+ALTER DATABASE GLUE_RAW_ICEBERG RESUME DISCOVERY;
+```
+
+Then verify that the expected tables exist in the AWS Glue database as well.
+Snowflake cannot display a table that the Glue job did not successfully create
+or that was written to a different Glue database/namespace.
 
 ## 3. Create Snowflake roles, tags and masking
 

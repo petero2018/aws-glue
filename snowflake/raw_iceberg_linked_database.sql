@@ -2,6 +2,9 @@
 --
 -- This file is a template. Run scripts/render_snowflake_sql.sh first; execute
 -- the generated snowflake/raw_iceberg_linked_database.local.sql afterwards.
+-- IMPORTANT: Execute this file section by section. Do not run the entire file
+-- in one selection. Stop after each DESC statement and update the matching AWS
+-- IAM trust policy before continuing.
 --
 -- IAM ROLE MAP — DO NOT MIX THESE UP
 --   {{SNOWFLAKE_S3_ROLE_ARN}}
@@ -52,6 +55,10 @@ DESC EXTERNAL VOLUME GLUE_RAW_ICEBERG_VOLUME
       FROM $1
       WHERE "property" = 'STORAGE_LOCATION_1';
 
+-- CHECKPOINT 1 — STOP HERE.
+-- Copy STORAGE_AWS_IAM_USER_ARN and STORAGE_AWS_EXTERNAL_ID into the trust
+-- policy of the S3 role below. Continue only after AWS IAM is updated.
+
 -- AWS ACTION REQUIRED — S3 role trust policy only:
 --   Role: {{SNOWFLAKE_S3_ROLE_ARN}}
 --   Principal.AWS = returned STORAGE_AWS_IAM_USER_ARN
@@ -93,6 +100,10 @@ DESC CATALOG INTEGRATION GLUE_RAW_ICEBERG_CATALOG_INT
         "property_value"
       FROM $1
       WHERE UPPER("property") IN ('GLUE_AWS_IAM_USER_ARN', 'GLUE_AWS_EXTERNAL_ID');
+
+-- CHECKPOINT 2 — STOP HERE.
+-- Copy GLUE_AWS_IAM_USER_ARN and GLUE_AWS_EXTERNAL_ID into the trust policy
+-- of the Glue catalog role below. Continue only after AWS IAM is updated.
 
 -- AWS ACTION REQUIRED — Glue catalog role trust policy only:
 --   Role: {{SNOWFLAKE_CATALOG_ROLE_ARN}}
