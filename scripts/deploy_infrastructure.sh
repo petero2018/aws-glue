@@ -81,3 +81,5 @@ echo "📋 Deployment Summary:"
 echo "====================="
 cd "$INFRA_DIR" && terraform output -json | jq '.' 2>/dev/null || terraform output
 cd "$PROJECT_ROOT"
+
+bash "$SCRIPTS_DIR/show_snowflake_next_steps.sh"

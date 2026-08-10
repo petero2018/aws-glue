@@ -1,0 +1,38 @@
+# Lake Formation grants for Glue jobs writing Glue Catalog Iceberg tables.
+#
+# The regular Glue Catalog database keeps IAM_ALLOWED_PRINCIPALS as its
+# default for compatibility, but Iceberg GlueCatalog createOrReplace calls
+# still require explicit Lake Formation metadata permissions for the Glue
+# service role. Without these grants, a new table can fail with:
+#   Insufficient Lake Formation permission(s): Required Describe on <table>
+#
+# These grants are intentionally Terraform-managed and cover both the
+# existing raw Iceberg tables and newly created tables such as the PII
+# table-property POC.
+
+resource "aws_lakeformation_permissions" "glue_raw_iceberg_database" {
+  principal   = aws_iam_role.glue_service_role.arn
+  permissions = ["CREATE_TABLE", "DESCRIBE"]
+
+  database {
+    name       = aws_glue_catalog_database.raw_iceberg.name
+    catalog_id = local.current_account_id
+  }
+
+  depends_on = [aws_lakeformation_data_lake_settings.main]
+}
+
+resource "aws_lakeformation_permissions" "glue_raw_iceberg_tables" {
+  principal   = aws_iam_role.glue_service_role.arn
+  permissions = ["SELECT", "INSERT", "DELETE", "ALTER", "DROP", "DESCRIBE"]
+
+  table {
+    database_name = aws_glue_catalog_database.raw_iceberg.name
+    catalog_id    = local.current_account_id
+    wildcard      = true
+  }
+
+  depends_on = [
+    aws_lakeformation_permissions.glue_raw_iceberg_database,
+  ]
+}

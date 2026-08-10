@@ -15,6 +15,31 @@ def pii_metadata():
     """Return the column metadata used to mark synthetic PII fields."""
     return {"comment": PII_COMMENT}
 
+
+# Iceberg table-property POC. The classification is deliberately not stored
+# in Spark field comments; the generator writes it as an Iceberg table
+# property instead. All ten columns are represented in the property map.
+PII_PROPERTY_KEY = "governance.pii.classification"
+PII_PROPERTY_SCHEMA_KEY = "governance.pii.classification.schema"
+PII_PROPERTY_SCHEMA_VALUE = "column-classification-v1"
+PII_PROPERTY_TAG_KEY = "governance.pii.tag"
+PII_PROPERTY_TAG_VALUE = "PII"
+
+EMPLOYEE_DIRECTORY_POC_TABLE = "employee_directory_poc"
+
+EMPLOYEE_DIRECTORY_POC_CLASSIFICATIONS = {
+    "employee_id": "NONE",
+    "first_name": "PII",
+    "last_name": "PII",
+    "email": "PII",
+    "phone": "UNCLASSIFIED_PII",
+    "department": "NONE",
+    "job_title": "NONE",
+    "country": "NONE",
+    "employment_type": "NONE",
+    "hire_date": "NONE",
+}
+
 # Organization schema
 ORGANIZATION_SCHEMA = StructType([
     StructField("org_id", IntegerType(), False),
@@ -73,4 +98,19 @@ ORDER_ITEM_SCHEMA = StructType([
     StructField("quantity", IntegerType(), False),
     StructField("unit_price", DoubleType(), False),
     StructField("subtotal", DoubleType(), False),
+])
+
+# Ten-column synthetic employee directory. It intentionally has no column
+# comments so the Snowflake POC must use the Iceberg table property.
+EMPLOYEE_DIRECTORY_POC_SCHEMA = StructType([
+    StructField("employee_id", IntegerType(), False),
+    StructField("first_name", StringType(), False),
+    StructField("last_name", StringType(), False),
+    StructField("email", StringType(), False),
+    StructField("phone", StringType(), False),
+    StructField("department", StringType(), False),
+    StructField("job_title", StringType(), False),
+    StructField("country", StringType(), False),
+    StructField("employment_type", StringType(), False),
+    StructField("hire_date", DateType(), False),
 ])

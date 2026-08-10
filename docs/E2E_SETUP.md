@@ -19,6 +19,15 @@ Make sure that:
 The project stores only non-secret AWS settings in `.aws-glue.local`. AWS
 credentials and SSO tokens remain in the normal AWS CLI configuration.
 
+When menu option `2` or `4` finishes, the terminal prints an
+account-specific AWS → Snowflake hand-off summary. It includes the generated
+bucket, Glue database, both Snowflake role ARNs, the exact `DESC` checkpoints,
+and the trust-policy value mapping. The same output can be printed later with:
+
+```bash
+bash scripts/show_snowflake_next_steps.sh
+```
+
 ## 1. Run the AWS setup flow
 
 Start the menu from the repository root:
@@ -42,8 +51,14 @@ DynamoDB lock table.
 ### `2` — Deploy Infrastructure
 
 Approve the Terraform plan only after checking the plan. This creates the S3
-bucket, Glue Catalog databases, IAM roles and policies, Athena resources, and
-the optional VPC/S3 Tables resources.
+bucket, Glue Catalog databases, IAM roles and policies, the explicit Lake
+Formation grants required by Glue Iceberg `createOrReplace`, Athena resources,
+and the optional VPC/S3 Tables resources.
+
+Terraform also registers the active AWS deploy identity as a Lake Formation
+data lake administrator. This is required so Terraform can grant the Glue
+service role permissions on future Iceberg tables when the AWS profile uses an
+SSO or assumed role identity.
 
 Keep `enable_msk = false` for this development flow unless MSK is explicitly
 required. MSK Serverless is billable.
@@ -60,6 +75,7 @@ identity and Terraform outputs, then creates the account-specific files:
 ```text
 snowflake/raw_iceberg_linked_database.local.sql
 snowflake/setup_glue_raw_iceberg_roles_and_masking.local.sql
+snowflake/setup_iceberg_property_pii_poc.local.sql
 ```
 
 Do not execute the `.sql` templates directly. Execute the generated `.local.sql`
@@ -78,6 +94,26 @@ Wait for the job to finish successfully. This creates the Iceberg metadata and
 tables in the Glue database and writes data under the generated bucket's
 `raw-iceberg/` prefix. The Parquet and S3 Tables pipelines are optional for the
 Snowflake linked-database setup.
+
+For the table-property PII proof of concept, choose option `5` instead:
+
+```text
+5) Iceberg PII table-property POC
+```
+
+This creates the separate `employee_directory_poc` Iceberg table in the same
+Glue database and at:
+
+```text
+s3://<generated-bucket>/raw-iceberg/employee_directory_poc/
+```
+
+The table has ten synthetic columns. `first_name`, `last_name`, `email` and
+`phone` are classified as `PII` or `UNCLASSIFIED_PII`; the other columns are
+classified as `NONE`. The classification is stored in the Iceberg metadata
+property `governance.pii.classification` as a JSON column-to-classification
+map. This job intentionally does not write PII information to column
+descriptions.
 
 ## 2. Configure Snowflake and AWS trust
 
@@ -235,7 +271,30 @@ LIMIT 10;
 
 The first query must mask PII; the second may show the original values.
 
-## 4. Useful diagnostics
+## 4. Run the table-property PII POC in Snowflake
+
+After the POC Glue job has completed and the linked database has synchronized,
+run the generated file:
+
+```text
+snowflake/setup_iceberg_property_pii_poc.local.sql
+```
+
+This separate property-based proof of concept creates a narrowly scoped
+external stage over only the POC table's Iceberg `metadata/` prefix, reads the
+latest metadata JSON, parses `governance.pii.classification`, and applies the
+`GLUE_GOVERNANCE.CLASSIFICATION.PII_CLASSIFICATION` tag to all ten columns.
+The tag values are exactly `NONE`, `UNCLASSIFIED_PII` and `PII`. Its
+tag-based masking policies preserve `NONE`, mask the two PII states for the
+normal reader role, and reveal the synthetic values only for the explicit PII
+reader role.
+
+The script contains a second `DESC STORAGE INTEGRATION` pause. Add the
+returned Snowflake principal and external ID as an additional statement in
+the trust policy of the existing Terraform-created S3 role, then continue.
+This trust update is intentionally ignored by Terraform's lifecycle policy.
+
+## 5. Useful diagnostics
 
 Check the active Snowflake role when masking results are unexpected:
 
@@ -251,7 +310,7 @@ tagging is not proof of failure; Account Usage can be delayed. Use the direct
 `TAG_REFERENCES_ALL_COLUMNS` query in the generated governance SQL for an
 immediate table-level check.
 
-## 5. Destroy/recreate warning
+## 6. Destroy/recreate warning
 
 ### Snowflake cleanup
 

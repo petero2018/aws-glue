@@ -70,13 +70,17 @@ resource "aws_athena_data_catalog" "glue_catalog" {
 # Lake Formation Settings
 # ============================================================================
 # By default Lake Formation blocks access to federated catalogs (e.g. S3 Tables)
-# even when IAM permissions are sufficient. Setting the account root as a data
-# lake admin grants unrestricted access and lets IAM policies be the sole
-# access control mechanism — the right approach for a single-account setup.
+# even when IAM permissions are sufficient. Keep the account root as an admin,
+# and also register the active Terraform IAM principal. The latter is required
+# because Terraform creates explicit grants for the Glue Iceberg service role;
+# an IAM/SSO caller that is not a Lake Formation admin cannot grant wildcard
+# table permissions even when it can grant permissions on the database it
+# created.
 
 resource "aws_lakeformation_data_lake_settings" "main" {
   admins = [
-    "arn:aws:iam::${local.current_account_id}:root"
+    "arn:aws:iam::${local.current_account_id}:root",
+    local.current_lakeformation_admin_arn,
   ]
 
   # Preserve the default IAM_ALLOWED_PRINCIPALS behaviour for regular

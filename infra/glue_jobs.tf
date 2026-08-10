@@ -24,8 +24,47 @@ resource "aws_glue_job" "sample_data_generator" {
     "--extra-py-files"          = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/base_glue_job.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/data_generator.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/schemas.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/sample_data.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/s3_io.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/analytics.py"
   }
 
-  tags = merge(local.common_tags, { Name = "Sample Data Generator - Iceberg" })
+  tags       = merge(local.common_tags, { Name = "Sample Data Generator - Iceberg" })
   depends_on = [aws_iam_role_policy.glue_s3_access]
+}
+
+# AWS Glue Job: Iceberg table-property PII proof of concept
+#
+# This writes a separate synthetic table under the same raw-iceberg prefix and
+# Glue database. Its column classifications are stored in Iceberg table
+# properties, not Glue/Snowflake column descriptions.
+resource "aws_glue_job" "pii_property_poc" {
+  name              = "${local.resource_name_prefix}-pii-property-poc"
+  description       = "Generates a synthetic Iceberg PII table-property POC"
+  role_arn          = aws_iam_role.glue_service_role.arn
+  glue_version      = "4.0"
+  worker_type       = "G.2X"
+  number_of_workers = 2
+  timeout           = 60
+
+  command {
+    name            = "glueetl"
+    script_location = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/pii_property_poc_generator.py"
+    python_version  = "3"
+  }
+
+  default_arguments = {
+    "--datalake-formats"        = "iceberg"
+    "--enable-glue-datacatalog" = "true"
+    "--S3_OUTPUT_PATH"          = "s3://${aws_s3_bucket.glue_data_bucket.id}/raw-iceberg"
+    "--DATABASE_NAME"           = local.glue_iceberg_database_name
+    "--TABLE_NAME"              = "employee_directory_poc"
+    "--TempDir"                 = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-temp"
+    "--extra-py-files"          = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/base_glue_job.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/data_generator.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/schemas.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/sample_data.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/s3_io.py"
+  }
+
+  tags       = merge(local.common_tags, { Name = "Iceberg PII Table Property POC" })
+  depends_on = [aws_iam_role_policy.glue_s3_access]
+}
+
+output "glue_pii_property_poc_job_name" {
+  description = "Name of the Iceberg table-property PII POC Glue job"
+  value       = aws_glue_job.pii_property_poc.name
 }
 
 # AWS Glue Job: Sample Data Generator - Parquet format
@@ -54,7 +93,7 @@ resource "aws_glue_job" "sample_data_generator_parquet" {
     "--extra-py-files"          = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/base_glue_job.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/data_generator.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/schemas.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/sample_data.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/s3_io.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/analytics.py"
   }
 
-  tags = merge(local.common_tags, { Name = "Sample Data Generator - Parquet" })
+  tags       = merge(local.common_tags, { Name = "Sample Data Generator - Parquet" })
   depends_on = [aws_iam_role_policy.glue_s3_access]
 }
 
@@ -155,13 +194,13 @@ resource "aws_glue_job" "s3tables_pipeline" {
     "--enable-glue-datacatalog" = "true"
 
     # Job parameters
-    "--SOURCE_DATABASE"      = local.glue_iceberg_database_name
-    "--SOURCE_PATH"          = "s3://${aws_s3_bucket.glue_data_bucket.id}/raw-iceberg"
-    "--TABLE_BUCKET_ARN"     = aws_s3tables_table_bucket.main.arn
-    "--NAMESPACE"            = local.s3_table_namespace
-    "--TempDir"              = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-temp"
-    "--extra-py-files"       = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/base_glue_job.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/schemas.py"
-    "--extra-jars"           = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/jars/s3-tables-catalog-for-iceberg-runtime.jar"
+    "--SOURCE_DATABASE"  = local.glue_iceberg_database_name
+    "--SOURCE_PATH"      = "s3://${aws_s3_bucket.glue_data_bucket.id}/raw-iceberg"
+    "--TABLE_BUCKET_ARN" = aws_s3tables_table_bucket.main.arn
+    "--NAMESPACE"        = local.s3_table_namespace
+    "--TempDir"          = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-temp"
+    "--extra-py-files"   = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/base_glue_job.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/schemas.py"
+    "--extra-jars"       = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/jars/s3-tables-catalog-for-iceberg-runtime.jar"
   }
 
   tags       = merge(local.common_tags, { Name = "S3 Tables Pipeline" })
