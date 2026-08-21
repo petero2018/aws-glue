@@ -57,7 +57,9 @@ class S3DataWriter:
         else:
             return f"{self.base_path}/{table_name}"
 
-    def _write_iceberg_table(self, df, table_name):
+    def _write_iceberg_table(self, df, table_name, table_properties=None,
+                             apply_column_comments=True,
+                             allow_parquet_fallback=True):
         """
         Write DataFrame to Glue Catalog as Iceberg table using the DataFrame writeTo API.
         Uses df.writeTo() instead of CREATE TABLE SQL to avoid triggering
@@ -70,21 +72,45 @@ class S3DataWriter:
         print(f"[INFO] Table location: {table_location}")
 
         try:
-            df.writeTo(full_table_name) \
-                .tableProperty("format-version", "2") \
-                .tableProperty("location", table_location) \
-                .createOrReplace()
+            table_writer = (
+                df.writeTo(full_table_name)
+                .tableProperty("format-version", "2")
+                .tableProperty("location", table_location)
+            )
+
+            for property_name, property_value in (table_properties or {}).items():
+                table_writer = table_writer.tableProperty(
+                    property_name, str(property_value)
+                )
+
+            table_writer.createOrReplace()
 
         except Exception as e:
             print(f"[ERROR] Iceberg writeTo failed: {type(e).__name__}: {str(e)}")
             import traceback
             print(f"[ERROR] Traceback:\n{traceback.format_exc()}")
-            print(f"[INFO] Falling back to Parquet for {table_name}")
-            return self._write_parquet_table(df, table_name)
+            if allow_parquet_fallback:
+                print(f"[INFO] Falling back to Parquet for {table_name}")
+                return self._write_parquet_table(df, table_name)
+            raise
 
-        self._apply_column_comments(df, full_table_name)
+        if apply_column_comments:
+            self._apply_column_comments(df, full_table_name)
         print(f"[SUCCESS] Iceberg table {full_table_name} written")
         return full_table_name
+
+    def write_iceberg_table(self, df, table_name, table_properties=None,
+                            apply_column_comments=True):
+        """Write one Iceberg table and optionally persist custom properties."""
+        if self.format != "iceberg":
+            raise ValueError("write_iceberg_table requires format='iceberg'")
+        return self._write_iceberg_table(
+            df,
+            table_name,
+            table_properties=table_properties,
+            apply_column_comments=apply_column_comments,
+            allow_parquet_fallback=False,
+        )
 
     def _apply_column_comments(self, df, full_table_name):
         """Persist Spark field comments as Iceberg/Glue column descriptions."""

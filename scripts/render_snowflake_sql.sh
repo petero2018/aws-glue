@@ -62,6 +62,10 @@ render_template \
     "$PROJECT_ROOT/snowflake/setup_glue_raw_iceberg_roles_and_masking.local.sql"
 
 render_template \
+    "$PROJECT_ROOT/snowflake/setup_iceberg_property_pii_poc.sql" \
+    "$PROJECT_ROOT/snowflake/setup_iceberg_property_pii_poc.local.sql"
+
+render_template \
     "$PROJECT_ROOT/snowflake/destroy_glue_raw_iceberg.sql" \
     "$PROJECT_ROOT/snowflake/destroy_glue_raw_iceberg.local.sql"
 

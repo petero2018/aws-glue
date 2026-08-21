@@ -58,6 +58,4 @@ echo ""
 
 echo -e "${GREEN}✅ Redeploy complete!${NC}"
 echo ""
-echo "Next steps:"
-echo "  1. Run the job: ./scripts/run_glue_job.sh"
-echo "  2. Or run everything: ./scripts/deploy_all.sh"
+bash "$SCRIPTS_DIR/show_snowflake_next_steps.sh"

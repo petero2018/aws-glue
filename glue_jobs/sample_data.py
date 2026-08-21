@@ -46,3 +46,9 @@ ORDER_STATUSES = ["Completed", "Pending", "Shipped", "Cancelled"]
 
 # Countries for customers
 COUNTRIES = ["USA", "Canada", "UK"]
+
+# Synthetic employee-directory values for the Iceberg table-property POC.
+# These values are intentionally fake and are not sourced from real people.
+EMPLOYEE_DEPARTMENTS = ["Engineering", "Finance", "Operations", "Sales"]
+EMPLOYEE_JOB_TITLES = ["Analyst", "Engineer", "Manager", "Specialist"]
+EMPLOYEE_TYPES = ["Full-time", "Part-time", "Contractor"]

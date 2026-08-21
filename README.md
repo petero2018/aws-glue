@@ -33,7 +33,7 @@ Production-ready AWS Glue data engineering platform on AWS. Generates synthetic 
 
 ### Tables (all three layers)
 
-`customers` · `orders` · `order_items` · `organizations` · `products`
+`customers` · `orders` · `order_items` · `organizations` · `products` · `employee_directory_poc`
 
 ---
 
@@ -49,6 +49,7 @@ Production-ready AWS Glue data engineering platform on AWS. Generates synthetic 
 │   ├── iam.tf                      # Glue + Athena service roles & policies
 │   ├── glue.tf                     # Glue catalog databases
 │   ├── glue_jobs.tf                # Glue jobs + Parquet crawler
+│   ├── lakeformation.tf            # Glue Iceberg Lake Formation grants
 │   ├── athena.tf                   # Athena workgroups, Lake Formation settings
 │   ├── cloudwatch.tf               # Log groups + alarms
 │   ├── vpc.tf                      # VPC, subnets, NAT Gateway
@@ -71,7 +72,8 @@ Production-ready AWS Glue data engineering platform on AWS. Generates synthetic 
     ├── generate_backend.sh         # Generate account-specific backend config
     ├── run_glue_job.sh              # Start and monitor Glue pipelines
     ├── deploy_infrastructure.sh    # terraform init → apply → upload JARs → register catalog
-    ├── redeploy.sh                 # Upload scripts + re-register catalog (no terraform)
+    ├── redeploy.sh                 # Apply Terraform + upload scripts + register catalog
+    ├── show_snowflake_next_steps.sh# Account-specific AWS → Snowflake hand-off
     ├── destroy_infrastructure.sh   # Pre-cleanup + terraform destroy
     ├── register_s3tables_catalog.sh# Glue federated catalog + Lake Formation grants
     ├── upload_glue_scripts.sh      # Upload Python files to S3
@@ -141,12 +143,22 @@ After infrastructure deployment, use menu option `7` or run:
 ./scripts/render_snowflake_sql.sh
 ```
 
-This renders the account-specific linked-database, governance and cleanup SQL
-files under `snowflake/*.local.sql`. Execute the setup files only after the
+This renders the account-specific linked-database, governance, property-POC
+and cleanup SQL files under `snowflake/*.local.sql`. Execute the setup files only after the
 Iceberg pipeline has created the Glue tables. The cleanup file is destructive
 and should be used before the AWS destroy flow. The complete AWS-to-Snowflake
-sequence, including the two manual IAM trust-policy updates, is documented in
+sequence, including the baseline manual IAM trust-policy updates and the
+additional metadata-stage trust step for the property POC, is documented in
 [docs/E2E_SETUP.md](docs/E2E_SETUP.md).
+
+After menu option `2` or `4` completes, the terminal also prints the
+account-specific hand-off: created resources, bucket/database names, both
+Snowflake role ARNs, the `DESC` checkpoints, the correct trust-policy value
+mapping, and the next menu/SQL steps. Reprint it later with:
+
+```bash
+bash scripts/show_snowflake_next_steps.sh
+```
 
 ### 6 — Redeploy after code changes
 
@@ -164,10 +176,11 @@ Uploads updated Python files and re-registers the catalog (idempotent).
 ./scripts/menu.sh   # option 6
 ```
 
-The runner can start the Iceberg generator, the Parquet generator/crawler, the
-S3 Tables pipeline, or the full chain. The full chain waits for each Glue job
-to finish before starting the next one. The S3 Tables pipeline must run after
-the Iceberg generator because it reads the raw Iceberg tables.
+The runner can start the normal Iceberg generator, the Parquet generator/crawler,
+the S3 Tables pipeline, the table-property PII POC, or the full chain. The PII
+POC is a separate Iceberg job and writes to the existing
+`raw-iceberg/employee_directory_poc/` path; it does not create a new bucket or
+Glue database.
 
 ### Destroy (menu option 5)
 

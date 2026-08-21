@@ -201,6 +201,33 @@ class DataGenerator:
 
         return order_items
 
+    def generate_employee_directory_poc(self, num_employees=100):
+        """Generate deterministic fake data for the table-property PII POC."""
+        from sample_data import (
+            EMPLOYEE_DEPARTMENTS, EMPLOYEE_JOB_TITLES, EMPLOYEE_TYPES
+        )
+
+        employees = []
+        for employee_id in range(1, num_employees + 1):
+            first_name = random.choice(FIRST_NAMES)
+            last_name = random.choice(LAST_NAMES)
+            employees.append({
+                "employee_id": employee_id,
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": f"employee_{employee_id}@example.com",
+                "phone": f"+1-FAKE-{employee_id:07d}",
+                "department": random.choice(EMPLOYEE_DEPARTMENTS),
+                "job_title": random.choice(EMPLOYEE_JOB_TITLES),
+                "country": random.choice(COUNTRIES),
+                "employment_type": random.choice(EMPLOYEE_TYPES),
+                "hire_date": (
+                    datetime.now() - timedelta(days=random.randint(30, 3650))
+                ).date(),
+            })
+
+        return employees
+
     @staticmethod
     def get_data_summary(organizations, products, customers, orders, order_items):
         """
