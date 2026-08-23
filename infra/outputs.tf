@@ -13,6 +13,26 @@ output "glue_data_bucket_region" {
   value       = aws_s3_bucket.glue_data_bucket.region
 }
 
+output "iceberg_s3_prefix" {
+  description = "S3 prefix containing all raw Iceberg table locations"
+  value       = local.iceberg_s3_prefix
+}
+
+output "iceberg_s3_uri" {
+  description = "S3 URI used as the shared raw Iceberg warehouse location"
+  value       = "s3://${aws_s3_bucket.glue_data_bucket.id}/${local.iceberg_s3_prefix}"
+}
+
+output "iceberg_storage_location_name" {
+  description = "Stable Snowflake external-volume storage location name"
+  value       = local.iceberg_storage_location_name
+}
+
+output "iceberg_glue_catalog_uri" {
+  description = "AWS Glue Iceberg REST catalog endpoint"
+  value       = "https://glue.${local.current_region}.amazonaws.com/iceberg"
+}
+
 output "aws_account_id" {
   description = "AWS account ID resolved from the active Terraform credentials"
   value       = local.current_account_id
@@ -26,6 +46,46 @@ output "snowflake_raw_iceberg_s3_role_arn" {
 output "snowflake_raw_iceberg_catalog_role_arn" {
   description = "Terraform-created role ARN for Snowflake AWS Glue REST catalog access"
   value       = aws_iam_role.snowflake_raw_iceberg_catalog.arn
+}
+
+output "snowflake_warehouse_name" {
+  description = "Snowflake warehouse referenced by generated SQL"
+  value       = local.snowflake_warehouse_name
+}
+
+output "snowflake_raw_iceberg_external_volume_name" {
+  description = "Snowflake external volume name used for raw Iceberg"
+  value       = local.snowflake_raw_iceberg_external_volume
+}
+
+output "snowflake_raw_iceberg_catalog_integration_name" {
+  description = "Snowflake catalog integration name used for raw Iceberg"
+  value       = local.snowflake_raw_iceberg_catalog_integration
+}
+
+output "snowflake_raw_iceberg_linked_database_name" {
+  description = "Snowflake linked database name used for raw Iceberg"
+  value       = local.snowflake_raw_iceberg_linked_database
+}
+
+output "snowflake_raw_iceberg_config" {
+  description = "Cross-system configuration contract for the generated raw Iceberg Snowflake setup"
+  value = {
+    aws_account_id             = local.current_account_id
+    aws_region                 = local.current_region
+    s3_bucket_name             = aws_s3_bucket.glue_data_bucket.id
+    s3_prefix                  = local.iceberg_s3_prefix
+    s3_uri                     = "s3://${aws_s3_bucket.glue_data_bucket.id}/${local.iceberg_s3_prefix}"
+    storage_location_name      = local.iceberg_storage_location_name
+    glue_database_name         = aws_glue_catalog_database.raw_iceberg.name
+    glue_catalog_uri           = "https://glue.${local.current_region}.amazonaws.com/iceberg"
+    snowflake_warehouse_name   = local.snowflake_warehouse_name
+    external_volume_name       = local.snowflake_raw_iceberg_external_volume
+    catalog_integration_name   = local.snowflake_raw_iceberg_catalog_integration
+    linked_database_name       = local.snowflake_raw_iceberg_linked_database
+    snowflake_s3_role_arn      = aws_iam_role.snowflake_raw_iceberg_s3.arn
+    snowflake_catalog_role_arn = aws_iam_role.snowflake_raw_iceberg_catalog.arn
+  }
 }
 
 output "glue_service_role_arn" {

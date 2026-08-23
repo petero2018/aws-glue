@@ -3,6 +3,6 @@
 AWS_PROFILE=myawsprofilenameforglue
 AWS_REGION=eu-west-2
 # Populated automatically by scripts/setup_aws.sh after AWS authentication.
-AWS_ACCOUNT_ID=
+AWS_ACCOUNT_ID=my aws acc number
 TF_VAR_environment=development
 TF_VAR_project_name=glue-engineering

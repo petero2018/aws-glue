@@ -143,13 +143,23 @@ After infrastructure deployment, use menu option `7` or run:
 ./scripts/render_snowflake_sql.sh
 ```
 
-This renders the account-specific linked-database, governance, property-POC
-and cleanup SQL files under `snowflake/*.local.sql`. Execute the setup files only after the
-Iceberg pipeline has created the Glue tables. The cleanup file is destructive
+This renders the account-specific universal raw Iceberg setup, governance,
+dynamic OBJECT masking, property-POC and cleanup SQL files under
+`snowflake/*.local.sql`. The raw
+Iceberg setup creates one shared external volume, Glue catalog integration and
+linked database for every table in the Terraform Glue database. Execute the
+raw Iceberg setup before or after the Glue pipelines; discovery is asynchronous.
+The cleanup file is destructive
 and should be used before the AWS destroy flow. The complete AWS-to-Snowflake
 sequence, including the baseline manual IAM trust-policy updates and the
 additional metadata-stage trust step for the property POC, is documented in
 [docs/E2E_SETUP.md](docs/E2E_SETUP.md).
+
+The cross-system values used by the generated SQL can be inspected with:
+
+```bash
+terraform -chdir=infra output snowflake_raw_iceberg_config
+```
 
 After menu option `2` or `4` completes, the terminal also prints the
 account-specific hand-off: created resources, bucket/database names, both
@@ -177,10 +187,30 @@ Uploads updated Python files and re-registers the catalog (idempotent).
 ```
 
 The runner can start the normal Iceberg generator, the Parquet generator/crawler,
-the S3 Tables pipeline, the table-property PII POC, or the full chain. The PII
+the S3 Tables pipeline, the table-property PII POC, the complex data types POC,
+the combined PII metadata POCs, or the full chain. The PII
 POC is a separate Iceberg job and writes to the existing
 `raw-iceberg/employee_directory_poc/` path; it does not create a new bucket or
 Glue database.
+
+The PII and complex-type POC jobs share the Iceberg metadata table
+`pii_column_metadata` at `raw-iceberg/pii_column_metadata/`. Each job rebuilds
+the same deterministic employee + complex classification set, so reruns cannot
+lose rows or create duplicates.
+
+The complex data types proof of concept is submenu option `6`:
+
+```text
+6) Iceberg complex data types POC (Array, Map, Struct)
+```
+
+It creates `complex_types_poc` under the existing
+`raw-iceberg/complex_types_poc/` path. The table contains `id` (`INTEGER`),
+`tags` (`ARRAY`/Iceberg list), `attributes` (`MAP`) and `profile`
+(`STRUCT`/object) columns. The `tags`, `attributes` and `profile` columns are
+classified as synthetic PII in `pii_column_metadata` so the Snowflake complex
+type masking policies can be tested; `id` remains `NONE` and is not written to
+the metadata table.
 
 ### Destroy (menu option 5)
 

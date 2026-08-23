@@ -7,6 +7,7 @@ comments, so a downstream metadata reader can apply Snowflake tags from it.
 
 import json
 import sys
+from datetime import datetime
 
 from awsglue.job import Job
 from awsglue.utils import getResolvedOptions
@@ -18,6 +19,9 @@ from schemas import (
     EMPLOYEE_DIRECTORY_POC_CLASSIFICATIONS,
     EMPLOYEE_DIRECTORY_POC_SCHEMA,
     EMPLOYEE_DIRECTORY_POC_TABLE,
+    PII_COLUMN_METADATA_CLASSIFICATIONS,
+    PII_COLUMN_METADATA_SCHEMA,
+    PII_COLUMN_METADATA_TABLE,
     PII_PROPERTY_KEY,
     PII_PROPERTY_SCHEMA_KEY,
     PII_PROPERTY_SCHEMA_VALUE,
@@ -28,7 +32,7 @@ from schemas import (
 
 args = getResolvedOptions(
     sys.argv,
-    ["JOB_NAME", "S3_OUTPUT_PATH", "DATABASE_NAME", "TABLE_NAME"],
+    ["JOB_NAME", "S3_OUTPUT_PATH", "DATABASE_NAME", "TABLE_NAME", "CATALOG_NAME"],
 )
 
 glue_job = BaseGlueJob(args)
@@ -76,4 +80,35 @@ writer.write_iceberg_table(
 print("[SUCCESS] Iceberg table-property PII POC completed")
 print(f"[INFO] Classification property: {PII_PROPERTY_KEY}")
 print(f"[INFO] Classifications: {table_properties[PII_PROPERTY_KEY]}")
+
+metadata_records = DataGenerator.generate_pii_column_metadata_for_tables(
+    PII_COLUMN_METADATA_CLASSIFICATIONS,
+    catalog=args["CATALOG_NAME"],
+    schema_name=database_name,
+    created_at=datetime.utcnow(),
+)
+metadata_dataframe = spark.createDataFrame(
+    metadata_records,
+    schema=PII_COLUMN_METADATA_SCHEMA,
+)
+metadata_writer = S3DataWriter(
+    spark,
+    output_path,
+    format="iceberg",
+    database=database_name,
+)
+metadata_writer.write_iceberg_table(
+    metadata_dataframe,
+    PII_COLUMN_METADATA_TABLE,
+    table_properties={
+        "governance.metadata.type": "pii-column-classification",
+        "governance.metadata.source_tables": "employee_directory_poc,complex_types_poc",
+    },
+    apply_column_comments=False,
+)
+print(
+    f"[SUCCESS] PII metadata table created: "
+    f"{database_name}.{PII_COLUMN_METADATA_TABLE} "
+    f"({len(metadata_records)} row(s))"
+)
 job.commit()

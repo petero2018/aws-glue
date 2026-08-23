@@ -20,6 +20,7 @@ terraform_output() {
 
 ICEBERG_JOB="$(terraform_output glue_job_name)"
 PII_PROPERTY_POC_JOB="$(terraform_output glue_pii_property_poc_job_name)"
+COMPLEX_TYPES_POC_JOB="$(terraform_output glue_complex_types_poc_job_name)"
 PARQUET_JOB="$(terraform_output glue_job_parquet_name)"
 S3TABLES_JOB="$(terraform_output glue_s3tables_job_name)"
 
@@ -72,6 +73,8 @@ run_menu() {
     echo "3) S3 Tables pipeline"
     echo "4) Full chain (Iceberg -> Parquet -> S3 Tables)"
     echo "5) Iceberg PII table-property POC"
+    echo "6) Iceberg complex data types POC (Array, Map, Struct)"
+    echo "7) Rebuild PII metadata POCs (employee + complex)"
     echo "9) Back"
     echo ""
     read -r -p "Select an option: " choice
@@ -94,6 +97,13 @@ run_menu() {
         5)
             start_and_wait "$PII_PROPERTY_POC_JOB"
             ;;
+        6)
+            start_and_wait "$COMPLEX_TYPES_POC_JOB"
+            ;;
+        7)
+            start_and_wait "$PII_PROPERTY_POC_JOB"
+            start_and_wait "$COMPLEX_TYPES_POC_JOB"
+            ;;
         9)
             exit 0
             ;;
@@ -107,6 +117,7 @@ run_menu() {
 echo "Configured Glue jobs:"
 echo "  Iceberg : $ICEBERG_JOB"
 echo "  PII POC : $PII_PROPERTY_POC_JOB"
+echo "  Complex : $COMPLEX_TYPES_POC_JOB"
 echo "  Parquet : $PARQUET_JOB"
 echo "  S3 Tables: $S3TABLES_JOB"
 run_menu

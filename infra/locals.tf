@@ -66,6 +66,15 @@ locals {
   glue_iceberg_database_name = "raw_iceberg_${var.environment}"
   glue_parquet_database_name = "raw_parquet_${var.environment}"
 
+  # Cross-system contract used by the generated Snowflake setup SQL. These
+  # are configuration names, not Snowflake-managed Terraform resources.
+  iceberg_s3_prefix                         = "raw-iceberg/"
+  iceberg_storage_location_name             = "${local.s3_bucket_name}-${local.current_region}"
+  snowflake_warehouse_name                  = "COMPUTE_WH"
+  snowflake_raw_iceberg_external_volume     = "GLUE_RAW_ICEBERG_VOLUME"
+  snowflake_raw_iceberg_catalog_integration = "GLUE_RAW_ICEBERG_CATALOG_INT"
+  snowflake_raw_iceberg_linked_database     = "GLUE_RAW_ICEBERG"
+
   # S3 Tables (table bucket + namespace)
   s3_table_bucket_name = "${local.resource_name_prefix}-tables"
   s3_table_namespace   = "engineering"

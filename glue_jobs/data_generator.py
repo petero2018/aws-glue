@@ -229,6 +229,77 @@ class DataGenerator:
         return employees
 
     @staticmethod
+    def generate_pii_column_metadata(classifications, catalog, schema_name,
+                                     table_name, created_at):
+        """Create metadata rows for classified PII columns only."""
+        records = []
+        for row_id, (column_name, classification) in enumerate(
+            classifications.items(), start=1
+        ):
+            if classification not in ("PII", "UNCLASSIFIED_PII"):
+                continue
+            records.append({
+                "id": row_id,
+                "catalog": catalog,
+                "schema": schema_name,
+                "table": table_name,
+                "column": column_name,
+                "pii_tag_key": "PII",
+                "pii_tag_value": classification,
+                "description": (
+                    f"Synthetic PII classification for "
+                    f"{schema_name}.{table_name}.{column_name}"
+                ),
+                "create_datetime": created_at,
+            })
+        return records
+
+    @staticmethod
+    def generate_pii_column_metadata_for_tables(classifications_by_table,
+                                                 catalog, schema_name,
+                                                 created_at):
+        """Create the complete deterministic metadata set for all POC tables."""
+        records = []
+        row_id = 1
+
+        for table_name, classifications in classifications_by_table.items():
+            table_records = DataGenerator.generate_pii_column_metadata(
+                classifications,
+                catalog=catalog,
+                schema_name=schema_name,
+                table_name=table_name,
+                created_at=created_at,
+            )
+            for record in table_records:
+                record["id"] = row_id
+                row_id += 1
+                records.append(record)
+
+        return records
+
+    def generate_complex_types_poc(self, num_records=10):
+        """Generate deterministic records containing nested collection types."""
+        records = []
+        countries = ["UK", "USA", "Canada"]
+        for record_id in range(1, num_records + 1):
+            country = countries[(record_id - 1) % len(countries)]
+            records.append({
+                "id": record_id,
+                "tags": ["iceberg", "nested", f"record-{record_id}"],
+                "attributes": {
+                    "source": "synthetic-poc",
+                    "tier": "gold" if record_id % 2 else "standard",
+                    "country_code": country.lower(),
+                },
+                "profile": {
+                    "display_name": f"Object User {record_id}",
+                    "country": country,
+                    "active": bool(record_id % 2),
+                },
+            })
+        return records
+
+    @staticmethod
     def get_data_summary(organizations, products, customers, orders, order_items):
         """
         Get summary statistics of generated data.

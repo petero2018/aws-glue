@@ -5,7 +5,7 @@ Defines PySpark StructType schemas for type-safe data generation.
 
 from pyspark.sql.types import (
     StructType, StructField, StringType, IntegerType,
-    DoubleType, DateType
+    DoubleType, DateType, TimestampType, BooleanType, ArrayType, MapType
 )
 
 PII_COMMENT = "PII=PII"
@@ -26,19 +26,32 @@ PII_PROPERTY_TAG_KEY = "governance.pii.tag"
 PII_PROPERTY_TAG_VALUE = "PII"
 
 EMPLOYEE_DIRECTORY_POC_TABLE = "employee_directory_poc"
+PII_COLUMN_METADATA_TABLE = "pii_column_metadata"
 
 EMPLOYEE_DIRECTORY_POC_CLASSIFICATIONS = {
     "employee_id": "NONE",
     "first_name": "PII",
     "last_name": "PII",
     "email": "PII",
-    "phone": "UNCLASSIFIED_PII",
+    "phone": "NONE",
     "department": "NONE",
     "job_title": "NONE",
     "country": "NONE",
     "employment_type": "NONE",
     "hire_date": "NONE",
 }
+
+PII_COLUMN_METADATA_SCHEMA = StructType([
+    StructField("id", IntegerType(), False),
+    StructField("catalog", StringType(), False),
+    StructField("schema", StringType(), False),
+    StructField("table", StringType(), False),
+    StructField("column", StringType(), False),
+    StructField("pii_tag_key", StringType(), False),
+    StructField("pii_tag_value", StringType(), False),
+    StructField("description", StringType(), False),
+    StructField("create_datetime", TimestampType(), False),
+])
 
 # Organization schema
 ORGANIZATION_SCHEMA = StructType([
@@ -113,4 +126,43 @@ EMPLOYEE_DIRECTORY_POC_SCHEMA = StructType([
     StructField("country", StringType(), False),
     StructField("employment_type", StringType(), False),
     StructField("hire_date", DateType(), False),
+])
+
+# Nested Iceberg type POC. Spark's ArrayType maps to an Iceberg list, and
+# StructType maps to an Iceberg struct/object. MapType maps to an Iceberg map.
+COMPLEX_TYPES_POC_TABLE = "complex_types_poc"
+
+# The complex POC deliberately classifies every nested payload column as PII
+# so the Snowflake ARRAY, MAP and OBJECT masking policies can be exercised.
+# The synthetic id is not classified and therefore is not written to the
+# pii_column_metadata table.
+COMPLEX_TYPES_POC_CLASSIFICATIONS = {
+    "id": "NONE",
+    "tags": "PII",
+    "attributes": "PII",
+    "profile": "PII",
+}
+
+PII_COLUMN_METADATA_CLASSIFICATIONS = {
+    EMPLOYEE_DIRECTORY_POC_TABLE: EMPLOYEE_DIRECTORY_POC_CLASSIFICATIONS,
+    COMPLEX_TYPES_POC_TABLE: COMPLEX_TYPES_POC_CLASSIFICATIONS,
+}
+
+COMPLEX_TYPES_POC_SCHEMA = StructType([
+    StructField("id", IntegerType(), False),
+    StructField("tags", ArrayType(StringType(), containsNull=False), False),
+    StructField(
+        "attributes",
+        MapType(StringType(), StringType(), valueContainsNull=False),
+        False,
+    ),
+    StructField(
+        "profile",
+        StructType([
+            StructField("display_name", StringType(), False),
+            StructField("country", StringType(), False),
+            StructField("active", BooleanType(), False),
+        ]),
+        False,
+    ),
 ])

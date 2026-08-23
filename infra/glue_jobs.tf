@@ -54,6 +54,7 @@ resource "aws_glue_job" "pii_property_poc" {
     "--S3_OUTPUT_PATH"          = "s3://${aws_s3_bucket.glue_data_bucket.id}/raw-iceberg"
     "--DATABASE_NAME"           = local.glue_iceberg_database_name
     "--TABLE_NAME"              = "employee_directory_poc"
+    "--CATALOG_NAME"            = local.current_account_id
     "--TempDir"                 = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-temp"
     "--extra-py-files"          = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/base_glue_job.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/data_generator.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/schemas.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/sample_data.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/s3_io.py"
   }
@@ -65,6 +66,45 @@ resource "aws_glue_job" "pii_property_poc" {
 output "glue_pii_property_poc_job_name" {
   description = "Name of the Iceberg table-property PII POC Glue job"
   value       = aws_glue_job.pii_property_poc.name
+}
+
+# AWS Glue Job: Iceberg nested/complex data types proof of concept
+#
+# This writes a separate table containing Array/List, Map and Struct/Object
+# columns under the existing raw Iceberg database and S3 prefix.
+resource "aws_glue_job" "complex_types_poc" {
+  name              = "${local.resource_name_prefix}-complex-types-poc"
+  description       = "Generates a synthetic Iceberg nested data types POC"
+  role_arn          = aws_iam_role.glue_service_role.arn
+  glue_version      = "4.0"
+  worker_type       = "G.2X"
+  number_of_workers = 2
+  timeout           = 60
+
+  command {
+    name            = "glueetl"
+    script_location = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/complex_types_poc_generator.py"
+    python_version  = "3"
+  }
+
+  default_arguments = {
+    "--datalake-formats"        = "iceberg"
+    "--enable-glue-datacatalog" = "true"
+    "--S3_OUTPUT_PATH"          = "s3://${aws_s3_bucket.glue_data_bucket.id}/raw-iceberg"
+    "--DATABASE_NAME"           = local.glue_iceberg_database_name
+    "--TABLE_NAME"              = "complex_types_poc"
+    "--CATALOG_NAME"            = local.current_account_id
+    "--TempDir"                 = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-temp"
+    "--extra-py-files"          = "s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/base_glue_job.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/data_generator.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/schemas.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/sample_data.py,s3://${aws_s3_bucket.glue_data_bucket.id}/glue-scripts/s3_io.py"
+  }
+
+  tags       = merge(local.common_tags, { Name = "Iceberg Complex Types POC" })
+  depends_on = [aws_iam_role_policy.glue_s3_access]
+}
+
+output "glue_complex_types_poc_job_name" {
+  description = "Name of the nested Iceberg data types POC Glue job"
+  value       = aws_glue_job.complex_types_poc.name
 }
 
 # AWS Glue Job: Sample Data Generator - Parquet format
